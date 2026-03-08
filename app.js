@@ -22,6 +22,35 @@ const direction = new THREE.Vector3();
 let ceilingFans = [];
 let wallFans = [];
 
+// Helper cho Mobile
+function isMobileView() {
+    return window.innerWidth <= 950 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+}
+
+function lockControls() {
+    if (isMobileView()) {
+        document.getElementById('blocker').style.display = 'none';
+        document.getElementById('crosshair').style.display = 'block';
+        controls.isLocked = true;
+
+        // Cố gắng bật Fullscreen tự động
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => { });
+        }
+    } else {
+        controls.lock();
+    }
+}
+
+function unlockControls() {
+    if (isMobileView()) {
+        controls.isLocked = false;
+        document.getElementById('crosshair').style.display = 'none';
+    } else {
+        controls.unlock();
+    }
+}
+
 init();
 animate();
 
@@ -94,7 +123,7 @@ function init() {
     const instructions = document.getElementById('instructions');
 
     instructions.addEventListener('click', function () {
-        controls.lock();
+        lockControls();
     });
 
     controls.addEventListener('lock', function () {
@@ -538,7 +567,7 @@ async function onClick() {
             document.getElementById('item-title').innerText = data.title;
             document.getElementById('item-desc').innerText = data.desc;
             document.getElementById('item-overlay').style.display = 'flex';
-            controls.unlock(); // Thoát chuột để đóng
+            unlockControls(); // Thoát chuột để đóng
         }
         else if (data.type === 'student') {
             const num = data.studentId;
@@ -555,7 +584,7 @@ async function onClick() {
                 document.getElementById('card-msg').innerHTML = (student.message || DEFAULT_MSG).replace(/\n/g, '<br/>');
 
                 document.getElementById('screen-card').style.display = 'flex';
-                controls.unlock();
+                unlockControls();
             } catch (e) {
                 alert("Lỗi tải thiệp. Thử lại sau!");
             }
@@ -566,11 +595,11 @@ async function onClick() {
 // GUI Đóng
 function closeItemOverlay() {
     document.getElementById('item-overlay').style.display = 'none';
-    controls.lock(); // Khoá lại để chơi tiếp
+    lockControls(); // Khoá lại để chơi tiếp
 }
 function closeStudentCard() {
     document.getElementById('screen-card').style.display = 'none';
-    controls.lock();
+    lockControls();
 }
 
 // MOBILE CONTROLS (4 Nút bấm & Touch Look)
@@ -590,30 +619,55 @@ function setupMobileControls() {
         }
     });
 
-    // 2. Chà vùng nửa màn hình phải để xoay Camera (Touch Look)
+    // 2. Chà vùng nửa màn hình phải để xoay Camera (Touch Look - Hỗ trợ Đa điểm Multi-touch)
     const lookZone = document.getElementById('mobile-look');
+    let lookTouchId = null;
+
     lookZone.addEventListener('touchstart', e => {
-        touchX = e.touches[0].pageX;
-        touchY = e.touches[0].pageY;
-        document.getElementById('instructions').click(); // Ép kích hoạt Lock trên Mobile
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (lookTouchId === null) {
+                lookTouchId = e.changedTouches[i].identifier;
+                touchX = e.changedTouches[i].pageX;
+                touchY = e.changedTouches[i].pageY;
+                document.getElementById('instructions').click(); // Ép kích hoạt Lock trên Mobile
+                break;
+            }
+        }
     }, { passive: false });
 
     lookZone.addEventListener('touchmove', e => {
         e.preventDefault();
-        const deltaX = e.touches[0].pageX - touchX;
-        const deltaY = e.touches[0].pageY - touchY;
-        touchX = e.touches[0].pageX;
-        touchY = e.touches[0].pageY;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === lookTouchId) {
+                const deltaX = e.changedTouches[i].pageX - touchX;
+                const deltaY = e.changedTouches[i].pageY - touchY;
+                touchX = e.changedTouches[i].pageX;
+                touchY = e.changedTouches[i].pageY;
 
-        // Xoay TẤT CẢ nhân vật trái/phải 360 độ để sửa lỗi khựng (Giống chuột máy tính)
-        controls.getObject().rotation.y -= deltaX * 0.005;
+                // Xoay nhân vật trái/phải
+                controls.getObject().rotation.y -= deltaX * 0.005;
 
-        // Góc ngước lên ngước xuống (Chỉ xoay Camera)
-        const PI_2 = Math.PI / 2;
-        const _pitchObject = controls.getObject().children[0];
-        _pitchObject.rotation.x -= deltaY * 0.005;
-        _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
+                // Góc ngước lên ngước xuống (Chỉ xoay Camera)
+                const PI_2 = Math.PI / 2;
+                const _pitchObject = controls.getObject().children[0];
+                _pitchObject.rotation.x -= deltaY * 0.005;
+                _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
+
+                break;
+            }
+        }
     }, { passive: false });
+
+    const endLook = e => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === lookTouchId) {
+                lookTouchId = null;
+                break;
+            }
+        }
+    };
+    lookZone.addEventListener('touchend', endLook);
+    lookZone.addEventListener('touchcancel', endLook);
 
     // Tap để click (Mô phỏng click chuột ngắm bắn)
     lookZone.addEventListener('click', () => { onClick(); });
