@@ -166,7 +166,7 @@
             document.getElementById(`file-${id}`).click();
         }
 
-        // ── Upload ảnh lên Firebase Storage ───────────────
+        // ── Xử lý ảnh KHÔNG CẦN FIREBASE STORAGE (Nén và lưu trực tiếp Text Base64 vào Firestore) ────────
         async function handlePhotoChange(id, input) {
             const file = input.files[0];
             if (!file) return;
@@ -177,44 +177,62 @@
             const btnEl = document.getElementById(`btn-${id}`);
 
             progressEl.style.display = 'block';
+            barEl.style.width = '20%';
             btnEl.disabled = true;
-            btnEl.textContent = '⏳ Đang upload...';
+            btnEl.textContent = '⏳ Đang nén ảnh...';
 
             try {
-                // Upload lên Firebase Storage: photos/{docId}.jpg
-                const storageRef = storage.ref(`photos/${docId}.jpg`);
-                const uploadTask = storageRef.put(file);
+                // 1. Đọc file
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = async function () {
+                        // 2. Nén ảnh xuống nhỏ hơn (Tránh đầy dung lượng Text của Firestore 1MB)
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 400; // Chiều ngang tối đa
+                        const MAX_HEIGHT = 500; // Chiều dọc tối đa
+                        let width = img.width;
+                        let height = img.height;
 
-                uploadTask.on('state_changed',
-                    snapshot => {
-                        const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        barEl.style.width = pct + '%';
-                    },
-                    err => {
-                        console.error('Upload error:', err);
-                        if (err.message.includes("unauthorized") || err.message.includes("permission")) {
-                            alert('❌ LỖI BẢO MẬT FIREBASE STORAGE!\n\nẢnh tải lên bị từ chối do bảo mật. Vui lòng vào:\nFirebase Console -> Storage -> Rules\nĐổi "false" thành "true" (allow read, write: if true;) rồi Publish.');
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                         } else {
-                            alert('❌ Upload ảnh thất bại: ' + err.message);
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                         }
-                        progressEl.style.display = 'none';
-                        btnEl.disabled = false;
-                        btnEl.textContent = '💾 Lưu lên Firebase';
-                    },
-                    async () => {
-                        // Lấy download URL và preview
-                        const url = await uploadTask.snapshot.ref.getDownloadURL();
-                        document.getElementById(`photo-${id}`).src = url;
-                        // Lưu URL vào Firestore ngay
-                        await db.collection('students').doc(docId).set({ photoURL: url }, { merge: true });
-                        progressEl.style.display = 'none';
-                        btnEl.disabled = false;
-                        btnEl.textContent = '💾 Lưu lên Firebase';
-                        showBadge(id);
-                    }
-                );
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // 3. Biến thành Text Base64 siêu nhẹ
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.6); // Nén JPEG mức 60%
+                        barEl.style.width = '60%';
+                        btnEl.textContent = '⏳ Đang lưu Firestore...';
+
+                        try {
+                            // 4. Lưu TRỰC TIẾP Text này vào Firestore (Bỏ qua Storage)
+                            await db.collection('students').doc(docId).set({ photoURL: base64Data }, { merge: true });
+
+                            // 5. Cập nhật giao diện
+                            document.getElementById(`photo-${id}`).src = base64Data;
+                            barEl.style.width = '100%';
+
+                            setTimeout(() => { progressEl.style.display = 'none'; }, 600);
+                            btnEl.disabled = false;
+                            btnEl.textContent = '💾 Lưu lên Firebase';
+                            showBadge(id);
+                        } catch (err) {
+                            alert('❌ Lỗi Database: Bạn đã làm bước sửa thành "if true" như Google Gemini dặn chưa?\n\n' + err.message);
+                            progressEl.style.display = 'none';
+                            btnEl.disabled = false;
+                            btnEl.textContent = '💾 Lưu lên Firebase';
+                        }
+                    };
+                };
             } catch (e) {
-                alert('❌ Lỗi upload: ' + e.message);
+                alert('❌ Lỗi xử lý: ' + e.message);
                 progressEl.style.display = 'none';
                 btnEl.disabled = false;
                 btnEl.textContent = '💾 Lưu lên Firebase';
