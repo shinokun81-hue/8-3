@@ -454,7 +454,8 @@ function animate() {
 
     if (controls.isLocked === true) {
         // ----- Di chuyển Vật lý -----
-        const delta = (time - prevTime) / 1000;
+        let delta = (time - prevTime) / 1000;
+        if (delta > 0.1) delta = 0.1; // Chống drop frame gây lỗi physic xuyên tường
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
@@ -650,11 +651,16 @@ function setupMobileControls() {
                 touchX = e.changedTouches[i].pageX;
                 touchY = e.changedTouches[i].pageY;
 
-                controls.getObject().rotation.y -= deltaX * 0.005;
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(camera.quaternion);
+
+                euler.y -= deltaX * 0.005;
+                euler.x -= deltaY * 0.005;
+
                 const PI_2 = Math.PI / 2;
-                const _pitchObject = controls.getObject().children[0];
-                _pitchObject.rotation.x -= deltaY * 0.005;
-                _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
+                euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
+
+                camera.quaternion.setFromEuler(euler);
                 break;
             }
         }
