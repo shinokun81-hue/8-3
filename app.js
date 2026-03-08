@@ -342,12 +342,27 @@ function init() {
                     'models/ceiling_fan.glb',
                     function (gltf) {
                         const fan = gltf.scene;
-                        fan.position.set(x, 3.2, z); // Treo trần
-                        fan.scale.set(0.015, 0.015, 0.015); // Thu nhỏ vì model sketchfab thường râtd to
 
-                        // Quạt Sketchfab đôi khi gắn trục xoay ở giữa. Quay nguyên khối cũng được.
-                        scene.add(fan);
-                        ceilingFans.push(fan);
+                        // -- TỰ ĐỘNG CHUẨN HOÁ SCALER & TÂM (Origin) CỦA MODEL BẤT KỲ --
+                        const box = new THREE.Box3().setFromObject(fan);
+                        const size = box.getSize(new THREE.Vector3());
+                        const centerBox = box.getCenter(new THREE.Vector3());
+
+                        // Dịch model sao cho TÂM của nó nằm ngay trục 0,0,0 của vỏ wrapper
+                        fan.position.set(-centerBox.x, -centerBox.y, -centerBox.z);
+
+                        // Tính tỷ lệ Scale để quạt to vừa đúng 2.5 mét ngang
+                        const maxDim = Math.max(size.x, size.z);
+                        const scaleFactor = (maxDim > 0) ? (2.5 / maxDim) : 1;
+                        fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+                        // Gắn vào một Group (vỏ wrapper) để Treo lên trần
+                        const wrapper = new THREE.Group();
+                        wrapper.position.set(x, 3.5, z); // Trần cao 4m, Treo xuống 3.5m
+                        wrapper.add(fan);
+
+                        scene.add(wrapper);
+                        ceilingFans.push(wrapper); // Xoay luôn cả vỏ bọc wrapper
                     },
                     undefined,
                     function (error) {
