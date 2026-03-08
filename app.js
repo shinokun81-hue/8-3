@@ -344,7 +344,7 @@ function init() {
 
     // Card geometry & material
     const cardGeo = new THREE.PlaneGeometry(0.4, 0.6);
-    const cardMat = new THREE.MeshStandardMaterial({ color: 0xffadc0, side: THREE.DoubleSide });
+    const cardMat = new THREE.MeshBasicMaterial({ color: 0xffadc0, side: THREE.DoubleSide });
 
     for (let row = 0; row < 5; row++) {
         for (let col = 0; col < 4; col++) {
@@ -388,7 +388,7 @@ function init() {
                 card.rotation.x = -Math.PI / 2;
 
                 const offset = cardsHere === 1 ? 0 : (c === 0 ? -0.5 : 0.5);
-                card.position.set(cx + offset, 0.75 + 0.005, cz - 0.1);
+                card.position.set(cx + offset, 0.78, cz - 0.1);
 
                 // Viền phát sáng nhẹ
                 const glowEdge = new THREE.LineSegments(
@@ -429,7 +429,7 @@ function animate() {
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
-        velocity.y -= 9.8 * 8.0 * delta; // Trọng lực (100.0)
+        velocity.y -= 9.8 * 8.0 * delta; // Trọng lực
 
         direction.z = Number(moveForward) - Number(moveBackward);
         direction.x = Number(moveRight) - Number(moveLeft);
@@ -438,8 +438,21 @@ function animate() {
         if (moveForward || moveBackward) velocity.z -= direction.z * 50.0 * delta;
         if (moveLeft || moveRight) velocity.x -= direction.x * 50.0 * delta;
 
+        const oldPos = controls.getObject().position.clone();
+
+        // Di chuyển trục X và kiểm tra va chạm
         controls.moveRight(-velocity.x * delta);
+        if (checkCollision(controls.getObject().position)) {
+            controls.getObject().position.x = oldPos.x;
+            velocity.x = 0;
+        }
+
+        // Di chuyển trục Z và kiểm tra va chạm
         controls.moveForward(-velocity.z * delta);
+        if (checkCollision(controls.getObject().position)) {
+            controls.getObject().position.z = oldPos.z;
+            velocity.z = 0;
+        }
 
         controls.getObject().position.y += (velocity.y * delta); // Jump
 
@@ -469,7 +482,7 @@ function animate() {
             if (obj.userData.type === 'student') {
                 tooltip.innerHTML = `[Click] Thư giãn 8/3<br>Học sinh ${obj.userData.studentId}`;
                 // Animation nhảy nhẹ
-                obj.position.y = 0.75 + 0.05 + Math.sin(time / 200) * 0.03;
+                obj.position.y = 0.78 + 0.03 + Math.sin(time / 200) * 0.03;
             } else {
                 tooltip.innerHTML = `[Click] Xem: ${obj.userData.title}`;
             }
@@ -478,7 +491,7 @@ function animate() {
             tooltip.style.opacity = 0;
             // Trả thiệp về vị trí cũ (Hơi nặng chút nhưng an toàn)
             interactables.forEach(obj => {
-                if (obj.userData.type === 'student') obj.position.y = 0.755;
+                if (obj.userData.type === 'student') obj.position.y = 0.78;
             });
         }
     }

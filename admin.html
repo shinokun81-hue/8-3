@@ -192,7 +192,11 @@
                     },
                     err => {
                         console.error('Upload error:', err);
-                        alert('❌ Upload ảnh thất bại: ' + err.message);
+                        if (err.message.includes("unauthorized") || err.message.includes("permission")) {
+                            alert('❌ LỖI BẢO MẬT FIREBASE STORAGE!\n\nẢnh tải lên bị từ chối do bảo mật. Vui lòng vào:\nFirebase Console -> Storage -> Rules\nĐổi "false" thành "true" (allow read, write: if true;) rồi Publish.');
+                        } else {
+                            alert('❌ Upload ảnh thất bại: ' + err.message);
+                        }
                         progressEl.style.display = 'none';
                         btnEl.disabled = false;
                         btnEl.textContent = '💾 Lưu lên Firebase';
@@ -230,7 +234,11 @@
                 await db.collection('students').doc(docId).set({ name, message: msg }, { merge: true });
                 showBadge(id);
             } catch (e) {
-                alert('❌ Lưu thất bại: ' + e.message);
+                if (e.message.includes("permission")) {
+                    alert('❌ LỖI BẢO MẬT FIRESTORE!\n\nBạn chưa mở Quyền Lưu trữ. Vui lòng vào:\nFirebase Console -> Firestore Database -> Rules\nĐổi "false" thành "true" (allow read, write: if true;) rồi Publish.');
+                } else {
+                    alert('❌ Lưu thất bại: ' + e.message);
+                }
             } finally {
                 btnEl.disabled = false;
                 btnEl.textContent = '💾 Lưu lên Firebase';
