@@ -444,14 +444,13 @@ function animate() {
         controls.moveRight(-velocity.x * delta);
         if (checkCollision(controls.getObject().position)) {
             controls.getObject().position.x = oldPos.x;
-            velocity.x = 0;
+            // Bỏ gán velocity = 0 để giúp nhân vật TRƯỢT dọc theo tường thay vì khựng lại
         }
 
         // Di chuyển trục Z và kiểm tra va chạm
         controls.moveForward(-velocity.z * delta);
         if (checkCollision(controls.getObject().position)) {
             controls.getObject().position.z = oldPos.z;
-            velocity.z = 0;
         }
 
         controls.getObject().position.y += (velocity.y * delta); // Jump
@@ -558,20 +557,69 @@ function closeStudentCard() {
     controls.lock();
 }
 
-// Mobile Joystick Logic (rất thô sơ, để backup)
-['w', 'a', 's', 'd'].forEach(k => {
-    const btn = document.getElementById('btn-' + k);
-    if (btn) {
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKey(k, true); });
-        btn.addEventListener('touchend', (e) => { e.preventDefault(); triggerKey(k, false); });
-    }
-});
-function triggerKey(key, isDown) {
-    if (key === 'w') moveForward = isDown;
-    if (key === 's') moveBackward = isDown;
-    if (key === 'a') moveLeft = isDown;
-    if (key === 'd') moveRight = isDown;
+// MOBILE CONTROLS NÂNG CAO (NippleJS & Touch Look)
+let joyManager = null;
+let touchX = 0, touchY = 0;
+
+function setupMobileControls() {
+    if (window.innerWidth > 768) return; // Chỉ chạy trên Mobile
+
+    // 1. Joystick điều hướng di chuyển
+    joyManager = nipplejs.create({
+        zone: document.getElementById('mobile-controls'),
+        mode: 'static',
+        position: { left: '60px', bottom: '60px' },
+        color: 'white',
+        size: 100
+    });
+
+    joyManager.on('move', function (evt, data) {
+        moveForward = moveBackward = moveLeft = moveRight = false;
+        if (data.angle.degree > 45 && data.angle.degree < 135) moveForward = true;
+        if (data.angle.degree > 225 && data.angle.degree < 315) moveBackward = true;
+        if (data.angle.degree >= 135 && data.angle.degree <= 225) moveLeft = true;
+        if (data.angle.degree <= 45 || data.angle.degree >= 315) moveRight = true;
+
+        // Cập nhật ngắm chéo
+        if (data.angle.degree > 20 && data.angle.degree < 80) { moveForward = true; moveRight = true; }
+        if (data.angle.degree > 100 && data.angle.degree < 160) { moveForward = true; moveLeft = true; }
+        if (data.angle.degree > 200 && data.angle.degree < 260) { moveBackward = true; moveLeft = true; }
+        if (data.angle.degree > 280 && data.angle.degree < 340) { moveBackward = true; moveRight = true; }
+    });
+
+    joyManager.on('end', function () {
+        moveForward = moveBackward = moveLeft = moveRight = false;
+    });
+
+    // 2. Chà vùng nửa màn hình phải để xoay Camera (Touch Look)
+    const lookZone = document.getElementById('mobile-look');
+    lookZone.addEventListener('touchstart', e => {
+        touchX = e.touches[0].pageX;
+        touchY = e.touches[0].pageY;
+        document.getElementById('instructions').click(); // Ép kích hoạt Lock trên Mobile
+    }, { passive: false });
+
+    lookZone.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const deltaX = e.touches[0].pageX - touchX;
+        const deltaY = e.touches[0].pageY - touchY;
+        touchX = e.touches[0].pageX;
+        touchY = e.touches[0].pageY;
+
+        // Mô phỏng xoay (Giống chuột máy tính)
+        const PI_2 = Math.PI / 2;
+        camera.rotation.y -= deltaX * 0.005;
+        // Giới hạn xoay lên/xuống
+        const _pitchObject = controls.getObject().children[0];
+        _pitchObject.rotation.x -= deltaY * 0.005;
+        _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
+    }, { passive: false });
+
+    // Tap để click (Mô phỏng click chuột ngắm bắn)
+    lookZone.addEventListener('click', () => { onClick(); });
 }
+
+window.addEventListener('load', setupMobileControls);
 
 // Check va chạm Box3 cho nhân vật
 function checkCollision(pos) {
