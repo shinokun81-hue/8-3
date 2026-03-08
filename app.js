@@ -351,9 +351,9 @@ function init() {
                         // Dịch model sao cho TÂM của nó nằm ngay trục 0,0,0 của vỏ wrapper
                         fan.position.set(-centerBox.x, -centerBox.y, -centerBox.z);
 
-                        // Tính tỷ lệ Scale để quạt to vừa đúng 2.5 mét ngang
+                        // Tính tỷ lệ Scale để quạt to vừa, không bị tủn mủn
                         const maxDim = Math.max(size.x, size.z);
-                        const scaleFactor = (maxDim > 0) ? (2.5 / maxDim) : 1;
+                        const scaleFactor = (maxDim > 0) ? (7.0 / maxDim) : 1;
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
                         // Gắn vào một Group (vỏ wrapper) để Treo lên trần
@@ -362,7 +362,7 @@ function init() {
                         wrapper.add(fan);
 
                         scene.add(wrapper);
-                        ceilingFans.push(wrapper); // Xoay luôn cả vỏ bọc wrapper
+                        ceilingFans.push(fan); // CHỈ Xoay cái lõi `fan` bên trong, KHÔNG xoay cái vỏ Treo Trần
                     },
                     undefined,
                     function (error) {
