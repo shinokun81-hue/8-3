@@ -307,30 +307,57 @@ function init() {
 
     // ================= CHẾ TẠO QUẠT TRẦN & TREO TƯỜNG =================
     // 4 Quạt trần
-    const ceilingFanMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const gltfLoader = typeof THREE.GLTFLoader !== 'undefined' ? new THREE.GLTFLoader() : null;
+
+    function buildFallbackFan(x, z) {
+        const ceilingFanMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const fanGroup = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), ceilingFanMat);
+        pole.position.y = 3.6; fanGroup.add(pole);
+        const center = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2), ceilingFanMat);
+        center.position.y = 3.2; fanGroup.add(center);
+
+        // Cánh quạt
+        const rotObj = new THREE.Group(); rotObj.position.y = 3.2;
+        for (let b = 0; b < 3; b++) {
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.2), bladeMat);
+            blade.position.set(0.9, 0, 0);
+            const bladePivot = new THREE.Group();
+            bladePivot.rotation.y = (Math.PI * 2 / 3) * b;
+            bladePivot.add(blade);
+            rotObj.add(bladePivot);
+        }
+        fanGroup.add(rotObj);
+        fanGroup.position.set(x, 0, z);
+        scene.add(fanGroup);
+        ceilingFans.push(rotObj);
+    }
+
     for (let x of [-3.5, 3.5]) {
         for (let z of [-3, 5]) {
-            const fanGroup = new THREE.Group();
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), ceilingFanMat);
-            pole.position.y = 3.6; fanGroup.add(pole);
-            const center = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2), ceilingFanMat);
-            center.position.y = 3.2; fanGroup.add(center);
+            if (gltfLoader) {
+                // Tải model nếu có
+                gltfLoader.load(
+                    'models/ceiling_fan.glb',
+                    function (gltf) {
+                        const fan = gltf.scene;
+                        fan.position.set(x, 3.2, z); // Treo trần
+                        fan.scale.set(0.015, 0.015, 0.015); // Thu nhỏ vì model sketchfab thường râtd to
 
-            // Cánh quạt
-            const rotObj = new THREE.Group(); rotObj.position.y = 3.2;
-            for (let b = 0; b < 3; b++) {
-                const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.2), bladeMat);
-                blade.position.set(0.9, 0, 0);
-                const bladePivot = new THREE.Group();
-                bladePivot.rotation.y = (Math.PI * 2 / 3) * b;
-                bladePivot.add(blade);
-                rotObj.add(bladePivot);
+                        // Quạt Sketchfab đôi khi gắn trục xoay ở giữa. Quay nguyên khối cũng được.
+                        scene.add(fan);
+                        ceilingFans.push(fan);
+                    },
+                    undefined,
+                    function (error) {
+                        // Nếu file không tồn tại trong thư mục models/ceiling_fan.glb, dùng quạt vẽ tay
+                        buildFallbackFan(x, z);
+                    }
+                );
+            } else {
+                buildFallbackFan(x, z);
             }
-            fanGroup.add(rotObj);
-            fanGroup.position.set(x, 0, z);
-            scene.add(fanGroup);
-            ceilingFans.push(rotObj);
         }
     }
 
