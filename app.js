@@ -334,57 +334,59 @@ function init() {
         ceilingFans.push(rotObj);
     }
 
-    const fanPositions = [
-        { x: -6, z: -7 },
-        { x: 6, z: -7 },
-        { x: -6, z: 7 },
-        { x: 6, z: 7 }
-    ];
+    if (gltfLoader) {
+        gltfLoader.load('models/ceiling_fan.glb', function (gltf) {
+            const masterModel = gltf.scene;
 
-    fanPositions.forEach(pos => {
-        if (gltfLoader) {
-            gltfLoader.load(
-                'models/ceiling_fan.glb',
-                function (gltf) {
-                    // 1. Phải nạp và Clone để có 4 thực thể tách rời hoàn toàn
-                    const fan = gltf.scene.clone();
+            // Dọn dẹp model gốc (xoá camera/light nếu có)
+            masterModel.traverse(c => {
+                if (c.isCamera || c.isLight) c.parent.remove(c);
+            });
 
-                    // 2. Tính tỷ lệ Scale (12 mét cho bự chuẩn lớp học)
-                    const box = new THREE.Box3().setFromObject(fan);
-                    const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.z, 0.001);
-                    const scale = 12.0 / maxDim;
+            const fanPositions = [
+                { x: -6, z: -7 }, { x: 6, z: -7 },
+                { x: -6, z: 7 }, { x: 6, z: 7 }
+            ];
 
-                    fan.scale.set(scale, scale, scale);
-                    // Reset tâm tuyệt đối để tránh bị văng quỹ đạo mặt trăng
-                    fan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-                    fan.rotation.set(0, 0, 0);
+            fanPositions.forEach(pos => {
+                const fanClone = masterModel.clone();
 
-                    // 3. Động cơ xoay (Rotator)
-                    const rotator = new THREE.Group();
-                    rotator.add(fan);
+                // 1. Tính toán Scale & Pivot chuẩn
+                const box = new THREE.Box3().setFromObject(fanClone);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
 
-                    // 4. Wrapper cố định trên trần nhà (Đẩy cao lên 3.9m sát trần 4m)
-                    const wrapper = new THREE.Group();
-                    wrapper.position.set(pos.x, 3.9, pos.z);
-                    wrapper.add(rotator);
+                // Sải cánh 5 mét (To gấp 3 quạt thường, đủ hoành tráng)
+                const scale = 5.0 / Math.max(size.x, size.z, 0.001);
+                fanClone.scale.set(scale, scale, scale);
 
-                    // Thêm trực tiếp vào Scene của Thế Giới, không dính líu đến Camera/Controls
-                    scene.add(wrapper);
+                // 2. CĂN CHỈNH TÂM: Đẩy đỉnh quạt (box.max.y) lên vị trí 0 
+                // để khi đặt vào Group tại y=4.0 nó sẽ dính sát trần.
+                fanClone.position.set(
+                    -center.x * scale,
+                    -box.max.y * scale,
+                    -center.z * scale
+                );
+                fanClone.rotation.set(0, 0, 0);
 
-                    // 5. Thêm vào mảng xoay Cánh
-                    ceilingFans.push(rotator);
-                },
-                undefined,
-                function (error) {
-                    buildFallbackFan(pos.x, pos.z);
-                }
-            );
-        } else {
-            buildFallbackFan(pos.x, pos.z);
-        }
-    });
+                // 3. Bộ phận quay (Rotator)
+                const rotator = new THREE.Group();
+                rotator.add(fanClone);
+
+                // 4. Đặt vị trí Tuyệt đối trong Thế giới
+                rotator.position.set(pos.x, 4.0, pos.z);
+
+                // QUAN TRỌNG: Thêm trực tiếp vào scene, KHÔNG qua wrapper lằng nhằng
+                scene.add(rotator);
+                ceilingFans.push(rotator);
+            });
+        }, undefined, function (error) {
+            // Fallback nếu lỗi load GLB
+            [[-6, -7], [6, -7], [-6, 7], [6, 7]].forEach(p => buildFallbackFan(p[0], p[1]));
+        });
+    } else {
+        [[-6, -7], [6, -7], [-6, 7], [6, 7]].forEach(p => buildFallbackFan(p[0], p[1]));
+    }
 
     // Quạt treo tường (Wall fans)
     const wallFanMat = new THREE.MeshStandardMaterial({ color: 0x444444 }); // Lồng sắt
