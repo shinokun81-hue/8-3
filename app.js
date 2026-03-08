@@ -340,56 +340,34 @@ function init() {
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
                     function (gltf) {
-                        // 1. Tạo bản sao mới
+                        // 1. Clone model
                         const fan = gltf.scene.clone();
 
-                        // 2. Tinh chỉnh kích thước (8.0m là sải cánh chuẩn vừa phòng)
+                        // 2. Tính toán tỷ lệ sải cánh (8 mét)
                         const box = new THREE.Box3().setFromObject(fan);
+                        const center = box.getCenter(new THREE.Vector3());
                         const size = box.getSize(new THREE.Vector3());
-                        const centerBox = box.getCenter(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.z, 0.001);
-                        const scaleFactor = 8.0 / maxDim;
+                        const scale = 8.0 / maxDim;
 
-                        fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
-
-                        // Đưa quạt về tâm của chính nó (Local Center)
-                        fan.position.set(-centerBox.x * scaleFactor, -centerBox.y * scaleFactor, -centerBox.z * scaleFactor);
-
-                        // Đảm bảo quạt đứng thẳng (Reset rotation nếu model bị xuất nghiêng)
+                        // 3. Chuẩn hoá Model
+                        fan.scale.set(scale, scale, scale);
+                        // QUAN TRỌNG: Đưa tâm thực của quạt về (0,0,0) của cha nó
+                        fan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
                         fan.rotation.set(0, 0, 0);
 
-                        // 3. Ghim chặt vào Wrapper đặt trên trần nhà
+                        // 4. Tạo mô tơ xoay (Rotator) - đảm bảo xoay quanh trục Y thẳng đứng
+                        const rotator = new THREE.Group();
+                        rotator.add(fan);
+
+                        // 5. Treo lên trần nhà (Wrapper)
                         const wrapper = new THREE.Group();
-                        // Dịch wrapper lên trần (y=4.0), và quạt rủ xuống một chút (3.8)
                         wrapper.position.set(x, 3.8, z);
-                        wrapper.add(fan);
+                        wrapper.add(rotator);
                         scene.add(wrapper);
 
-                        // 4. Tìm bộ phận cánh quạt để xoay
-                        let widestMesh = null;
-                        let maxSpan = 0;
-                        fan.traverse((child) => {
-                            if (child.isMesh) {
-                                const cBox = new THREE.Box3().setFromObject(child);
-                                const cSize = cBox.getSize(new THREE.Vector3());
-                                const span = Math.max(cSize.x, cSize.z);
-                                if (span > maxSpan) {
-                                    maxSpan = span;
-                                    widestMesh = child;
-                                }
-                            }
-                        });
-
-                        if (widestMesh) {
-                            let rotor = widestMesh;
-                            // Tìm node cha chung của các cánh quạt để xoay đồng bộ
-                            while (rotor.parent && rotor.parent !== fan && rotor.parent.type !== 'Scene') {
-                                rotor = rotor.parent;
-                            }
-                            ceilingFans.push(rotor);
-                        } else {
-                            ceilingFans.push(fan);
-                        }
+                        // 6. Cho rotator vào danh sách xoay (Xoay cả cái quạt để tránh lỗi gãy cánh do model lỗi)
+                        ceilingFans.push(rotator);
                     },
                     undefined,
                     function (error) {
