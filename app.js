@@ -309,159 +309,127 @@ function init() {
     // 4 Quạt trần
     const gltfLoader = typeof THREE.GLTFLoader !== 'undefined' ? new THREE.GLTFLoader() : null;
 
-    function buildFallbackFan(x, z) {
-        const ceilingFanMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const fanGroup = new THREE.Group();
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8), ceilingFanMat);
-        pole.position.y = 3.6; fanGroup.add(pole);
-        const center = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2), ceilingFanMat);
-        center.position.y = 3.2; fanGroup.add(center);
+    // ================= KHỞI TẠO QUẠT (INSTANT FANS) =================
+    // Dùng cơ chế: Tạo quạt bằng Code trước (luôn hiện), sau đó thay bằng Model GLB (nếu load xong)
 
-        // Cánh quạt
-        const rotObj = new THREE.Group(); rotObj.position.y = 3.2;
-        for (let b = 0; b < 3; b++) {
-            const blade = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.2), bladeMat);
-            blade.position.set(0.9, 0, 0);
-            const bladePivot = new THREE.Group();
-            bladePivot.rotation.y = (Math.PI * 2 / 3) * b;
-            bladePivot.add(blade);
-            rotObj.add(bladePivot);
+    const ceilingFanGroups = [];
+    const wallFanGroups = [];
+
+    // 1. Khởi tạo 4 Quạt trần bằng Code (Procedural)
+    const cfPositions = [{ x: -5, z: -8 }, { x: 5, z: -8 }, { x: -5, z: 8 }, { x: 5, z: 8 }];
+    cfPositions.forEach((pos, idx) => {
+        const group = new THREE.Group();
+        group.position.set(pos.x, 3.8, pos.z); // Độ cao 3.8m chuẩn
+        scene.add(group);
+        ceilingFanGroups.push(group);
+
+        // Tạo quạt "tạm" bằng Three.js primitives
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+        pole.position.y = 0.2; group.add(pole);
+
+        const rotator = new THREE.Group();
+        rotator.name = "rotator";
+        group.add(rotator);
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
+        hub.castShadow = true; hub.receiveShadow = true;
+        rotator.add(hub);
+
+        for (let i = 0; i < 3; i++) {
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.02, 0.3), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+            blade.position.set(1.0, 0, 0);
+            blade.castShadow = true; blade.receiveShadow = true;
+            const p = new THREE.Group(); p.rotation.y = (Math.PI * 2 / 3) * i;
+            p.add(blade); rotator.add(p);
         }
-        fanGroup.add(rotObj);
-        fanGroup.position.set(x, 0, z);
-        scene.add(fanGroup);
-        ceilingFans.push(rotObj);
-    }
+        ceilingFans.push(rotator);
+    });
 
+    // 2. Nạp Model Quạt Trần (Thay thế nếu thành công)
     if (gltfLoader) {
-        gltfLoader.load('models/ceiling_fan.glb', function (gltf) {
-            // Dọn dẹp model gốc
-            gltf.scene.traverse(c => { if (c.isCamera || c.isLight) c.parent.remove(c); });
+        gltfLoader.load('models/ceiling_fan.glb', (gltf) => {
+            cfPositions.forEach((pos, idx) => {
+                const model = gltf.scene.clone();
+                model.traverse(c => { if (c.isCamera || c.isLight) c.visible = false; });
 
-            const fanPositions = [
-                { x: -5, z: -8 }, { x: 5, z: -8 },
-                { x: -5, z: 8 }, { x: 5, z: 8 }
-            ];
-
-            fanPositions.forEach((pos, idx) => {
-                const fanClone = gltf.scene.clone();
-                // 1. Reset triệt để ma trận toạ độ
-                fanClone.matrix.identity();
-                fanClone.matrixWorld.identity();
-                fanClone.quaternion.set(0, 0, 0, 1);
-
-                // 2. Tìm bộ phân Cánh (widest part) để căn chiều cao cho chuẩn
-                const box = new THREE.Box3().setFromObject(fanClone);
+                const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
+                const scale = 4.5 / Math.max(size.x, size.z, 0.001);
+                model.scale.set(scale, scale, scale);
+                model.position.set(-center.x * scale, -box.max.y * scale, -center.z * scale);
 
-                // Tìm Mesh rộng nhất (là cánh) để lấy toạ độ Y của nó
-                let widestPart = null;
-                let maxS = 0;
-                fanClone.traverse(c => {
-                    if (c.isMesh) {
-                        const cb = new THREE.Box3().setFromObject(c);
-                        const cs = cb.getSize(new THREE.Vector3());
-                        const s = Math.max(cs.x, cs.z);
-                        if (s > maxS) { maxS = s; widestPart = c; }
-                    }
-                });
+                const targetGroup = ceilingFanGroups[idx];
+                // Xoá quạt tạm
+                while (targetGroup.children.length > 0) targetGroup.remove(targetGroup.children[0]);
 
-                // Tỷ lệ Zoom (Sải cánh 4.0 mét - Mức độ đẹp nhất)
-                const scale = 4.0 / Math.max(size.x, size.z, 0.001);
-                fanClone.scale.set(scale, scale, scale);
+                const newRotator = new THREE.Group();
+                newRotator.add(model);
+                targetGroup.add(newRotator);
 
-                // 3. FIX CHIỀU CAO: 
-                // Thay vì lấy đỉnh mẫu, ta lấy đúng tâm bộ cánh quạt làm chuẩn 0
-                // để khi treo lên 3.6m, cái cánh sẽ chính xác ở 3.6m.
-                let bladeYOffset = 0;
-                if (widestPart) {
-                    const wBox = new THREE.Box3().setFromObject(widestPart);
-                    const wCenter = wBox.getCenter(new THREE.Vector3());
-                    bladeYOffset = wCenter.y; // Toạ độ Y của bộ cánh sau khi đã scale
-                } else {
-                    bladeYOffset = center.y;
-                }
-
-                fanClone.position.set(-center.x * scale, -bladeYOffset, -center.z * scale);
-
-                // 4. Môtơ xoay cực mượt
-                const rotator = new THREE.Group();
-                rotator.add(fanClone);
-                rotator.position.set(pos.x, 3.6, pos.z); // Treo cách sàn 3.6 mét (Hết thấp!)
-
-                scene.add(rotator);
-                ceilingFans.push(rotator);
+                // Cập nhật mảng xoay (Xoá cái cũ của Group này trong ceilingFans nếu cần, 
+                // nhưng để đơn giản ta cứ push và animate tất cả Group có tên rotator)
+                ceilingFans[idx] = newRotator;
             });
-        }, undefined, function (error) {
-            [[-5, -8], [5, -8], [-5, 8], [5, 8]].forEach(p => buildFallbackFan(p[0], p[1]));
         });
-    } else {
-        [[-5, -8], [5, -8], [-5, 8], [5, 8]].forEach(p => buildFallbackFan(p[0], p[1]));
     }
 
-    // 3 Quạt treo tường (Wall fans) - Thay bằng Model thực tế
+    // 3. Khởi tạo 3 Quạt treo tường bằng Code
+    const wfPositions = [-4, 2, 8];
+    wfPositions.forEach((z, idx) => {
+        const group = new THREE.Group();
+        group.position.set(-7.7, 2.5, z);
+        group.rotation.y = Math.PI / 2;
+        scene.add(group);
+        wallFanGroups.push(group);
+
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+        hub.rotation.x = Math.PI / 2;
+        hub.castShadow = true; hub.receiveShadow = true;
+
+        const head = new THREE.Group();
+        head.add(hub);
+        group.add(head);
+
+        const rot = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+            const bl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.01), new THREE.MeshStandardMaterial({ color: 0xff7f2a }));
+            bl.position.y = 0.3;
+            bl.castShadow = true; bl.receiveShadow = true;
+            const p = new THREE.Group(); p.rotation.z = (Math.PI * 2 / 3) * i;
+            p.add(bl); rot.add(p);
+        }
+        rot.position.z = 0.1;
+        head.add(rot);
+
+        wallFans.push({ rotObj: rot, group: head });
+    });
+
+    // 4. Nạp Model Quạt Treo Tường (Thay thế nếu thành công)
     if (gltfLoader) {
-        gltfLoader.load('models/electric_wall_fan.glb', function (gltf) {
-            const masterModel = gltf.scene;
-
-            // Dọn dẹp sơ bộ
-            masterModel.traverse(c => { if (c.isCamera || c.isLight) c.visible = false; });
-
-            const wallZPositions = [-4, 2, 8];
-            wallZPositions.forEach((z, idx) => {
-                const wFan = masterModel.clone();
-
-                // 1. Tính toán Scale (Sải cánh 1.5 mét cho dễ thấy)
-                const box = new THREE.Box3().setFromObject(wFan);
+        gltfLoader.load('models/electric_wall_fan.glb', (gltf) => {
+            wfPositions.forEach((z, idx) => {
+                const model = gltf.scene.clone();
+                model.traverse(c => { if (c.isCamera || c.isLight) c.visible = false; });
+                const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z, 0.01);
-                const scale = 1.5 / maxDim; // To hơn chút cho chắc chắn thấy được
+                const scale = 1.3 / Math.max(size.y, size.z, 0.001);
+                model.scale.set(scale, scale, scale);
+                model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
-                wFan.scale.set(scale, scale, scale);
-                // Đưa model về tâm cục bộ (0,0,0)
-                wFan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+                const targetGroup = wallFanGroups[idx];
+                while (targetGroup.children.length > 0) targetGroup.remove(targetGroup.children[0]);
 
-                // 2. Cấu trúc Group để xoay
-                const headGroup = new THREE.Group();
-                headGroup.add(wFan);
+                const newHead = new THREE.Group();
+                newHead.add(model);
+                targetGroup.add(newHead);
 
-                const wrapper = new THREE.Group();
-                // Đặt x = -7.5 (cách tường 0.5m để tránh bị lún vào tường)
-                wrapper.position.set(-7.5, 2.5, z);
-                wrapper.rotation.y = Math.PI / 2; // Xoay 90 độ mặt nhìn vào lớp
-                wrapper.add(headGroup);
-
-                scene.add(wrapper);
-
-                // 3. Dò tìm bộ phận cánh quạt
-                let blades = null;
-                let maxS = 0;
-                wFan.traverse(child => {
-                    if (child.isMesh) {
-                        const cb = new THREE.Box3().setFromObject(child);
-                        const cs = cb.getSize(new THREE.Vector3());
-                        const s = Math.max(cs.x, cs.y, cs.z);
-                        if (s > maxS) {
-                            maxS = s;
-                            blades = child;
-                        }
-                    }
+                let blades = model;
+                model.traverse(c => {
+                    if (c.isMesh && Math.max(new THREE.Box3().setFromObject(c).getSize(new THREE.Vector3()).y) > 0.5) blades = c;
                 });
-
-                wallFans.push({
-                    rotObj: blades || wFan,
-                    group: headGroup
-                });
-            });
-        }, undefined, function (e) {
-            [[-7.8, -4], [-7.8, 2], [-7.8, 8]].forEach(p => {
-                // Fallback nếu không tải được quạt 3D
-                const fallback = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x555555 }));
-                fallback.position.set(p[0], 2.5, p[1]);
-                scene.add(fallback);
+                wallFans[idx] = { rotObj: blades, group: newHead };
             });
         });
     }
