@@ -223,6 +223,13 @@ function init() {
     rightWall.receiveShadow = true;
     scene.add(rightWall); objects.push(rightWall);
 
+    // Trần nhà
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(16, 22), wallMat);
+    ceiling.rotation.x = Math.PI / 2; // Úp xuống
+    ceiling.position.set(0, 4, 0);
+    ceiling.receiveShadow = true;
+    scene.add(ceiling); objects.push(ceiling);
+
     // Cửa sổ & Rèm tường phải
     const curtainMat = new THREE.MeshStandardMaterial({ color: 0xc8b5a6, roughness: 1.0, side: THREE.DoubleSide });
     for (let i = -2; i <= 2; i++) {
@@ -319,33 +326,32 @@ function init() {
     const cfPositions = [{ x: -5, z: -8 }, { x: 5, z: -8 }, { x: -5, z: 8 }, { x: 5, z: 8 }];
     cfPositions.forEach((pos, idx) => {
         const group = new THREE.Group();
-        group.position.set(pos.x, 3.8, pos.z); // Độ cao 3.8m chuẩn
+        group.position.set(pos.x, 4.0, pos.z); // Ghim sát mốc trần 4m
         scene.add(group);
         ceilingFanGroups.push(group);
 
-        // Tạo quạt "tạm" bằng Three.js primitives
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
-        pole.position.y = 0.2; group.add(pole);
+        // Tạo quạt "tạm" bằng code - pole sẽ chúc xuống từ trần (y từ 0 xuống -0.3)
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+        pole.position.y = -0.15; group.add(pole);
 
         const rotator = new THREE.Group();
         rotator.name = "rotator";
+        rotator.position.y = -0.3; // Đưa bộ cánh xuống dưới pole (độ cao hiệu dụng: 3.7m)
         group.add(rotator);
 
-        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
-        hub.castShadow = true; hub.receiveShadow = true;
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x999999 }));
         rotator.add(hub);
 
         for (let i = 0; i < 3; i++) {
-            const blade = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.02, 0.3), new THREE.MeshStandardMaterial({ color: 0x333333 }));
-            blade.position.set(1.0, 0, 0);
-            blade.castShadow = true; blade.receiveShadow = true;
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.01, 0.2), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+            blade.position.set(0.45, 0, 0);
             const p = new THREE.Group(); p.rotation.y = (Math.PI * 2 / 3) * i;
             p.add(blade); rotator.add(p);
         }
         ceilingFans.push(rotator);
     });
 
-    // 2. Nạp Model Quạt Trần (Thay thế nếu thành công)
+    // 2. Nạp Model Quạt Trần thực tế
     if (gltfLoader) {
         gltfLoader.load('models/ceiling_fan.glb', (gltf) => {
             cfPositions.forEach((pos, idx) => {
@@ -355,20 +361,22 @@ function init() {
                 const box = new THREE.Box3().setFromObject(model);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
-                const scale = 4.5 / Math.max(size.x, size.z, 0.001);
+
+                // Thu nhỏ tỷ lệ về kích thước sải cánh chuẩn 1.8m (đẹp nhất cho phòng học)
+                const scale = 1.8 / Math.max(size.x, size.z, 0.001);
                 model.scale.set(scale, scale, scale);
+
+                // Căn chỉnh tâm: Đưa đỉnh pole lên 0 để gắn vào trần
                 model.position.set(-center.x * scale, -box.max.y * scale, -center.z * scale);
 
                 const targetGroup = ceilingFanGroups[idx];
-                // Xoá quạt tạm
                 while (targetGroup.children.length > 0) targetGroup.remove(targetGroup.children[0]);
 
                 const newRotator = new THREE.Group();
                 newRotator.add(model);
                 targetGroup.add(newRotator);
 
-                // Cập nhật mảng xoay (Xoá cái cũ của Group này trong ceilingFans nếu cần, 
-                // nhưng để đơn giản ta cứ push và animate tất cả Group có tên rotator)
+                // Điểm quay sẽ ở ngay toạ độ của Group
                 ceilingFans[idx] = newRotator;
             });
         });
