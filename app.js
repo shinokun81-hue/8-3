@@ -229,22 +229,33 @@ function init() {
     ceiling.receiveShadow = true;
     scene.add(ceiling); objects.push(ceiling);
 
-    // Cửa sổ & Rèm tường phải
-    const curtainMat = new THREE.MeshStandardMaterial({ color: 0xc8b5a6, roughness: 1.0, side: THREE.DoubleSide });
-    for (let i = -2; i <= 2; i++) {
-        const windowPane = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.8), new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.6 }));
-        windowPane.rotation.y = -Math.PI / 2;
-        windowPane.position.set(7.9, 1.8, i * 4);
-        scene.add(windowPane);
+    // 2 Cửa ra vào (Thay thế cửa sổ)
+    const doorMat = new THREE.MeshStandardMaterial({ map: getWoodTexture(), roughness: 0.8 });
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
 
-        // Rèm vén 2 bên
-        const curtainLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 2.5), curtainMat);
-        curtainLeft.position.set(7.8, 1.8, i * 4 - 1.4);
-        scene.add(curtainLeft);
-        const curtainRight = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 2.5), curtainMat);
-        curtainRight.position.set(7.8, 1.8, i * 4 + 1.4);
-        scene.add(curtainRight);
-    }
+    // Vị trí cửa: Đầu lớp (-8) và Cuối lớp (8)
+    [-8, 8].forEach(zPos => {
+        const doorGroup = new THREE.Group();
+
+        // Cánh cửa
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.4, 1.4), doorMat);
+        door.position.set(7.95, 1.2, zPos);
+        door.castShadow = true;
+        doorGroup.add(door);
+
+        // Khung cửa
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 1.5), new THREE.MeshStandardMaterial({ color: 0x5a3e2b }));
+        frame.position.set(8.0, 1.25, zPos);
+        doorGroup.add(frame);
+
+        // Tay nắm cửa
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.2), handleMat);
+        handle.position.set(7.9, 1.2, zPos + 0.5);
+        doorGroup.add(handle);
+
+        scene.add(doorGroup);
+        objects.push(door); // Có va chạm
+    });
 
     // Bảng đen (Phía trước: -z)
     const boardGroup = new THREE.Group();
