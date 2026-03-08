@@ -370,30 +370,35 @@ function init() {
                 const targetGroup = ceilingFanGroups[idx];
                 while (targetGroup.children.length > 0) targetGroup.remove(targetGroup.children[0]);
 
-                const staticPart = new THREE.Group();
-                const rotatingPart = new THREE.Group();
-                targetGroup.add(staticPart);
-                targetGroup.add(rotatingPart);
+                // 1. Tạo 2 bản sao hoàn hảo giữ nguyên mọi tỉ lệ và toạ độ
+                const staticPart = model.clone();
+                const rotatingPart = model.clone();
 
-                // Đi sâu vào model để tách các phần
-                model.traverse(c => {
+                // 2. Logic thông minh để lọc: Cái nào gầy thì đứng im, cái nào rộng thì xoay
+                const threshold = (size.x * scale) * 0.3; // Ngưỡng 30% sải cánh
+
+                staticPart.traverse(c => {
                     if (c.isMesh) {
                         const mBox = new THREE.Box3().setFromObject(c);
                         const mSize = mBox.getSize(new THREE.Vector3());
-                        // Phân tách: Cánh quạt thường rộng hơn đáng kể so với Thân/Đế
-                        if (Math.max(mSize.x, mSize.z) > size.x * 0.3) {
-                            rotatingPart.add(c.clone()); // Dùng Clone để giữ context gốc nếu cần
-                        } else {
-                            staticPart.add(c.clone());
-                        }
+                        // Nếu là cánh quạt (rộng) -> Ẩn đi ở phần Tĩnh
+                        if (Math.max(mSize.x, mSize.z) > threshold) c.visible = false;
                     }
                 });
 
-                // Nếu không lọc được Mesh nào, dùng nguyên model để đảm bảo quạt vẫn hiện
-                if (rotatingPart.children.length === 0) {
-                    rotatingPart.add(model);
-                }
+                rotatingPart.traverse(c => {
+                    if (c.isMesh) {
+                        const mBox = new THREE.Box3().setFromObject(c);
+                        const mSize = mBox.getSize(new THREE.Vector3());
+                        // Nếu là thân/đế (hẹp) -> Ẩn đi ở phần Động
+                        if (Math.max(mSize.x, mSize.z) <= threshold) c.visible = false;
+                    }
+                });
 
+                targetGroup.add(staticPart);
+                targetGroup.add(rotatingPart);
+
+                // Chỉ cho phần Cánh xoay
                 ceilingFans[idx] = rotatingPart;
             });
         });
