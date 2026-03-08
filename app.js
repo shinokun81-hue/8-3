@@ -572,3 +572,28 @@ function triggerKey(key, isDown) {
     if (key === 'a') moveLeft = isDown;
     if (key === 'd') moveRight = isDown;
 }
+
+// Check va chạm Box3 cho nhân vật
+function checkCollision(pos) {
+    const playerRadius = 0.3;
+    const playerBox = new THREE.Box3(
+        new THREE.Vector3(pos.x - playerRadius, pos.y - 1.5, pos.z - playerRadius),
+        new THREE.Vector3(pos.x + playerRadius, pos.y + 0.1, pos.z + playerRadius)
+    );
+    for (let obj of objects) {
+        if (!obj.geometry) continue;
+        if (!obj.userData.boundingBox) {
+            obj.geometry.computeBoundingBox();
+            obj.userData.boundingBox = new THREE.Box3();
+        }
+        obj.userData.boundingBox.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+
+        // Bỏ qua sàn nhà
+        if (obj.userData.boundingBox.max.y <= 0.1) continue;
+
+        if (playerBox.intersectsBox(obj.userData.boundingBox)) {
+            return true;
+        }
+    }
+    return false;
+}
