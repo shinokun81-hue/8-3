@@ -346,34 +346,34 @@ function init() {
             gltfLoader.load(
                 'models/ceiling_fan.glb',
                 function (gltf) {
-                    // 1. Clone để có 4 thực thể riêng biệt
+                    // 1. Phải nạp và Clone để có 4 thực thể tách rời hoàn toàn
                     const fan = gltf.scene.clone();
 
-                    // 2. Tinh chỉnh kích thước (10m cho hoành tráng)
+                    // 2. Tính tỷ lệ Scale (12 mét cho bự chuẩn lớp học)
                     const box = new THREE.Box3().setFromObject(fan);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.z, 0.001);
-                    const scale = 10.0 / maxDim;
+                    const scale = 12.0 / maxDim;
 
                     fan.scale.set(scale, scale, scale);
-                    // Reset tâm quạt về origin của chính nó
+                    // Reset tâm tuyệt đối để tránh bị văng quỹ đạo mặt trăng
                     fan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
                     fan.rotation.set(0, 0, 0);
 
-                    // 3. Mô tơ xoay
+                    // 3. Động cơ xoay (Rotator)
                     const rotator = new THREE.Group();
                     rotator.add(fan);
 
-                    // 4. Wrapper cố định trên trần nhà (3.95m - Rất sát trần)
+                    // 4. Wrapper cố định trên trần nhà (Đẩy cao lên 3.9m sát trần 4m)
                     const wrapper = new THREE.Group();
-                    wrapper.position.set(pos.x, 3.95, pos.z);
+                    wrapper.position.set(pos.x, 3.9, pos.z);
                     wrapper.add(rotator);
 
-                    // Thêm trực tiếp vào scene chính của ứng dụng
+                    // Thêm trực tiếp vào Scene của Thế Giới, không dính líu đến Camera/Controls
                     scene.add(wrapper);
 
-                    // 5. Thêm vào danh sách cập nhật animation
+                    // 5. Thêm vào mảng xoay Cánh
                     ceilingFans.push(rotator);
                 },
                 undefined,
