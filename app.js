@@ -340,10 +340,10 @@ function init() {
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
                     function (gltf) {
-                        // 1. Phải Dùng .clone() để 4 Quạt tách biệt hoàn toàn
+                        // 1. Tạo bản sao mới
                         const fan = gltf.scene.clone();
 
-                        // 2. Tinh chỉnh Scale và RESET tâm của Model về 0,0,0
+                        // 2. Tinh chỉnh kích thước (8.0m là sải cánh chuẩn vừa phòng)
                         const box = new THREE.Box3().setFromObject(fan);
                         const size = box.getSize(new THREE.Vector3());
                         const centerBox = box.getCenter(new THREE.Vector3());
@@ -351,16 +351,21 @@ function init() {
                         const scaleFactor = 8.0 / maxDim;
 
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                        // QUAN TRỌNG: Phải dịch con của scene về tâm để khi xoay nó không bị văng quỹ đạo
+
+                        // Đưa quạt về tâm của chính nó (Local Center)
                         fan.position.set(-centerBox.x * scaleFactor, -centerBox.y * scaleFactor, -centerBox.z * scaleFactor);
 
-                        // 3. Đặt vào Wrapper để ghim vị trí trên trần nhà (x, 3.8, z)
+                        // Đảm bảo quạt đứng thẳng (Reset rotation nếu model bị xuất nghiêng)
+                        fan.rotation.set(0, 0, 0);
+
+                        // 3. Ghim chặt vào Wrapper đặt trên trần nhà
                         const wrapper = new THREE.Group();
+                        // Dịch wrapper lên trần (y=4.0), và quạt rủ xuống một chút (3.8)
                         wrapper.position.set(x, 3.8, z);
                         wrapper.add(fan);
                         scene.add(wrapper);
 
-                        // 4. Tìm bộ phận cánh quạt để xoay (Giữ chân đế đứng yên)
+                        // 4. Tìm bộ phận cánh quạt để xoay
                         let widestMesh = null;
                         let maxSpan = 0;
                         fan.traverse((child) => {
@@ -377,6 +382,7 @@ function init() {
 
                         if (widestMesh) {
                             let rotor = widestMesh;
+                            // Tìm node cha chung của các cánh quạt để xoay đồng bộ
                             while (rotor.parent && rotor.parent !== fan && rotor.parent.type !== 'Scene') {
                                 rotor = rotor.parent;
                             }
