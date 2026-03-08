@@ -205,9 +205,17 @@
 
       #mobile-look {
         display: block;
-        width: 60vw;
-        left: 40vw;
-        /* Vùng touch xoay camera bên phải */
+        width: 100vw;
+        left: 0;
+        /* Vùng touch xoay camera và Tap toàn màn hình (sẽ không đè lên joystick vì z-index thấp hơn) */
+      }
+
+      #crosshair {
+        display: none !important;
+      }
+
+      #tooltip {
+        display: none !important;
       }
     }
 

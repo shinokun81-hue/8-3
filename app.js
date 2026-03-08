@@ -513,30 +513,32 @@ function animate() {
         if (pos.z < -10.5) pos.z = -10.5;
         if (pos.z > 10.5) pos.z = 10.5;
 
-        // ----- Raycaster Crosshair / Hover ngắm bắn -----
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        const intersects = raycaster.intersectObjects(interactables);
-        const tooltip = document.getElementById('tooltip');
-        const crosshair = document.getElementById('crosshair');
+        // ----- Raycaster Crosshair / Hover ngắm bắn (CHỈ DÀNH CHO MÁY TÍNH) -----
+        if (!isMobileView()) {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(interactables);
+            const tooltip = document.getElementById('tooltip');
+            const crosshair = document.getElementById('crosshair');
 
-        if (intersects.length > 0 && intersects[0].distance < 4) { // Chỉ tương tác nếu đứng đủ gần (< 4m)
-            const obj = intersects[0].object;
-            crosshair.classList.add('active');
-            tooltip.style.opacity = 1;
-            if (obj.userData.type === 'student') {
-                tooltip.innerHTML = `[Click] Thư giãn 8/3<br>Học sinh ${obj.userData.studentId}`;
-                // Animation nhảy nhẹ
-                obj.position.y = 0.78 + 0.03 + Math.sin(time / 200) * 0.03;
+            if (intersects.length > 0 && intersects[0].distance < 4) { // Chỉ tương tác nếu đứng đủ gần (< 4m)
+                const obj = intersects[0].object;
+                crosshair.classList.add('active');
+                tooltip.style.opacity = 1;
+                if (obj.userData.type === 'student') {
+                    tooltip.innerHTML = `[Click] Thư giãn 8/3<br>Học sinh ${obj.userData.studentId}`;
+                    // Animation nhảy nhẹ
+                    obj.position.y = 0.78 + 0.03 + Math.sin(time / 200) * 0.03;
+                } else {
+                    tooltip.innerHTML = `[Click] Xem: ${obj.userData.title}`;
+                }
             } else {
-                tooltip.innerHTML = `[Click] Xem: ${obj.userData.title}`;
+                crosshair.classList.remove('active');
+                tooltip.style.opacity = 0;
+                // Trả thiệp về vị trí cũ (Hơi nặng chút nhưng an toàn)
+                interactables.forEach(obj => {
+                    if (obj.userData.type === 'student') obj.position.y = 0.78;
+                });
             }
-        } else {
-            crosshair.classList.remove('active');
-            tooltip.style.opacity = 0;
-            // Trả thiệp về vị trí cũ (Hơi nặng chút nhưng an toàn)
-            interactables.forEach(obj => {
-                if (obj.userData.type === 'student') obj.position.y = 0.78;
-            });
         }
     }
 
@@ -553,42 +555,46 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Xử lý Click -> Lấy vật đang bị ngắm
-async function onClick() {
-    if (!controls.isLocked) return;
+// Hàm chung xử lý mở Đồ vật
+async function handleInteract(obj) {
+    const data = obj.userData;
+    if (data.type === 'special') {
+        document.getElementById('item-title').innerText = data.title;
+        document.getElementById('item-desc').innerText = data.desc;
+        document.getElementById('item-overlay').style.display = 'flex';
+        unlockControls();
+    }
+    else if (data.type === 'student') {
+        const num = data.studentId;
+        // Báo hiệu đang tải nếu click trên PC
+        if (!isMobileView()) document.getElementById('tooltip').innerText = '⏳ Đang tải...';
 
+        try {
+            const student = await loadStudentById(num);
+            const photoEl = document.getElementById('card-photo');
+            photoEl.src = student.photoURL || 'photos/default.jpg';
+            photoEl.onerror = function () { this.src = 'photos/default.jpg'; };
+
+            document.getElementById('card-name').textContent = student.name;
+            document.getElementById('card-id').textContent = `(${String(num).padStart(2, '0')})`;
+            const DEFAULT_MSG = `Mời bạn đến với buổi vui chơi chào nhân dịp Ngày Quốc tế phụ nữ của ITA22 nhé! 🌸\n\nChúc bạn luôn xinh đẹp, hạnh phúc và rạng rỡ! 💐`;
+            document.getElementById('card-msg').innerHTML = (student.message || DEFAULT_MSG).replace(/\n/g, '<br/>');
+
+            document.getElementById('screen-card').style.display = 'flex';
+            unlockControls();
+        } catch (e) {
+            alert("Lỗi tải thiệp. Thử lại sau!");
+        }
+    }
+}
+
+// Xử lý Click (Trên PC) -> Lấy vật đang bị ngắm giữa màn hình
+async function onClick() {
+    if (!controls.isLocked || isMobileView()) return; // Mobile dùng Tap riêng
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const intersects = raycaster.intersectObjects(interactables);
-
     if (intersects.length > 0 && intersects[0].distance < 4) {
-        const data = intersects[0].object.userData;
-
-        if (data.type === 'special') {
-            document.getElementById('item-title').innerText = data.title;
-            document.getElementById('item-desc').innerText = data.desc;
-            document.getElementById('item-overlay').style.display = 'flex';
-            unlockControls(); // Thoát chuột để đóng
-        }
-        else if (data.type === 'student') {
-            const num = data.studentId;
-            document.getElementById('tooltip').innerText = '⏳ Đang tải...';
-            try {
-                const student = await loadStudentById(num);
-                const photoEl = document.getElementById('card-photo');
-                photoEl.src = student.photoURL || 'photos/default.jpg';
-                photoEl.onerror = function () { this.src = 'photos/default.jpg'; };
-
-                document.getElementById('card-name').textContent = student.name;
-                document.getElementById('card-id').textContent = `(${String(num).padStart(2, '0')})`;
-                const DEFAULT_MSG = `Mời bạn đến với buổi vui chơi chào nhân dịp Ngày Quốc tế phụ nữ của ITA22 nhé! 🌸\n\nChúc bạn luôn xinh đẹp, hạnh phúc và rạng rỡ! 💐`;
-                document.getElementById('card-msg').innerHTML = (student.message || DEFAULT_MSG).replace(/\n/g, '<br/>');
-
-                document.getElementById('screen-card').style.display = 'flex';
-                unlockControls();
-            } catch (e) {
-                alert("Lỗi tải thiệp. Thử lại sau!");
-            }
-        }
+        handleInteract(intersects[0].object);
     }
 }
 
@@ -602,15 +608,14 @@ function closeStudentCard() {
     lockControls();
 }
 
-// MOBILE CONTROLS (4 Nút bấm & Touch Look)
+// MOBILE CONTROLS (4 Nút bấm & Touch Look/Tap)
 let touchX = 0, touchY = 0;
 
 function setupMobileControls() {
-    // Chạy nếu là màn hình nhỏ hoăc là thiết bị có màn hình cảm ứng (Ví dụ xoay ngang màn hình)
     const isMobile = window.innerWidth <= 950 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     if (!isMobile) return;
 
-    // 1. Joystick 4 hướng (Thay thế bằng 4 nút W A S D)
+    // 1. 4 nút WASD
     ['w', 'a', 's', 'd'].forEach(k => {
         const btn = document.getElementById('btn-' + k);
         if (btn) {
@@ -619,17 +624,18 @@ function setupMobileControls() {
         }
     });
 
-    // 2. Chà vùng nửa màn hình phải để xoay Camera (Touch Look - Hỗ trợ Đa điểm Multi-touch)
+    // 2. Vùng Lookzone
     const lookZone = document.getElementById('mobile-look');
     let lookTouchId = null;
+    let tapStartX = 0, tapStartY = 0; // Để phân biệt Vuốt và Chạm (Tap)
 
     lookZone.addEventListener('touchstart', e => {
         for (let i = 0; i < e.changedTouches.length; i++) {
             if (lookTouchId === null) {
                 lookTouchId = e.changedTouches[i].identifier;
-                touchX = e.changedTouches[i].pageX;
-                touchY = e.changedTouches[i].pageY;
-                document.getElementById('instructions').click(); // Ép kích hoạt Lock trên Mobile
+                touchX = tapStartX = e.changedTouches[i].pageX;
+                touchY = tapStartY = e.changedTouches[i].pageY;
+                if (!controls.isLocked) document.getElementById('instructions').click(); // Ép kích hoạt Lock trên Mobile
                 break;
             }
         }
@@ -644,15 +650,11 @@ function setupMobileControls() {
                 touchX = e.changedTouches[i].pageX;
                 touchY = e.changedTouches[i].pageY;
 
-                // Xoay nhân vật trái/phải
                 controls.getObject().rotation.y -= deltaX * 0.005;
-
-                // Góc ngước lên ngước xuống (Chỉ xoay Camera)
                 const PI_2 = Math.PI / 2;
                 const _pitchObject = controls.getObject().children[0];
                 _pitchObject.rotation.x -= deltaY * 0.005;
                 _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
-
                 break;
             }
         }
@@ -661,16 +663,29 @@ function setupMobileControls() {
     const endLook = e => {
         for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].identifier === lookTouchId) {
+                const tapEndX = e.changedTouches[i].pageX;
+                const tapEndY = e.changedTouches[i].pageY;
                 lookTouchId = null;
+
+                // Nếu ngón tay dời đi rất ít (< 20px) -> Được coi là 1 CÚ TAP ĐỂ MỞ VẬT PHẨM
+                if (Math.abs(tapEndX - tapStartX) < 20 && Math.abs(tapEndY - tapStartY) < 20 && controls.isLocked) {
+                    const pointer = new THREE.Vector2();
+                    pointer.x = (tapEndX / window.innerWidth) * 2 - 1;
+                    pointer.y = -(tapEndY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(pointer, camera);
+                    const intersects = raycaster.intersectObjects(interactables);
+
+                    // Điện thoại cho phép chạm xa hơn một chút (khoảng 6m)
+                    if (intersects.length > 0 && intersects[0].distance < 6) {
+                        handleInteract(intersects[0].object);
+                    }
+                }
                 break;
             }
         }
     };
     lookZone.addEventListener('touchend', endLook);
     lookZone.addEventListener('touchcancel', endLook);
-
-    // Tap để click (Mô phỏng click chuột ngắm bắn)
-    lookZone.addEventListener('click', () => { onClick(); });
 }
 
 function triggerKey(key, isDown) {
