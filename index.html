@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chúc Mừng 8/3 – ITA22</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Floating petals background -->
+  <div class="petals-container" id="petals"></div>
+
+  <!-- MAIN INPUT SCREEN -->
+  <div class="screen" id="screen-input">
+    <div class="glass-card input-card">
+      <div class="badge-top">🌸 NGÀY QUỐC TẾ PHỤ NỮ 8/3 🌸</div>
+      <h1 class="title-main">Happy<br /><span class="script-font">Women's Day</span></h1>
+      <p class="subtitle">Nhập số thứ tự của bạn trong lớp để nhận thiệp chúc mừng 💌</p>
+
+      <div class="input-group">
+        <label for="student-num">Số thứ tự (1 – 34)</label>
+        <input
+          type="number"
+          id="student-num"
+          min="1"
+          max="34"
+          placeholder="Ví dụ: 01, 02, 15..."
+          autocomplete="off"
+        />
+        <span class="input-hint">Nhập số thứ tự trong danh sách lớp ITA22</span>
+      </div>
+
+      <button class="btn-primary" onclick="lookupStudent()">
+        <span>✨ Nhận thiệp của bạn</span>
+      </button>
+
+      <div class="error-msg" id="error-msg" style="display:none;"></div>
+
+      <a href="admin.html" class="admin-link">🔐 Admin</a>
+    </div>
+  </div>
+
+  <!-- CARD DISPLAY SCREEN -->
+  <div class="screen" id="screen-card" style="display:none;">
+    <div class="card-wrap">
+      <div class="flower-deco top-left">🌺</div>
+      <div class="flower-deco top-right">🌸</div>
+
+      <div class="glass-card profile-card">
+        <div class="tag-83">NGÀY QUỐC TẾ PHỤ NỮ 8/3</div>
+        <div class="big-title script-font">Happy Women's Day</div>
+
+        <!-- Photo -->
+        <div class="photo-wrap">
+          <div class="photo-ring">
+            <img id="card-photo" src="" alt="Ảnh học sinh" onerror="this.src='photos/default.jpg'" />
+          </div>
+          <div class="photo-badge">💐</div>
+        </div>
+
+        <!-- Name -->
+        <div class="card-name" id="card-name"></div>
+        <div class="card-id" id="card-id"></div>
+
+        <!-- Message -->
+        <div class="card-msg-box">
+          <div class="card-msg" id="card-msg"></div>
+        </div>
+
+        <!-- Event info -->
+        <div class="card-info">
+          <div class="info-row">⏰ <span>Thời gian: 13h00 – 08/3/2026 (Chủ nhật)</span></div>
+          <div class="info-row">📍 <span>ITA22 nhé!</span></div>
+        </div>
+
+        <button class="btn-primary btn-back" onclick="goBack()">← Quay lại</button>
+      </div>
+
+      <div class="flower-deco bot-left">🌷</div>
+      <div class="flower-deco bot-right">🌺</div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

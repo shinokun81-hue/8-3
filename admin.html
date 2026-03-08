@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – ITA22 8/3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;700;800&family=Dancing+Script:wght@700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="admin-body">
+
+    <!-- LOGIN PANEL -->
+    <div id="admin-login" class="admin-login-wrap">
+        <div class="glass-card" style="max-width:380px;">
+            <div class="badge-top">🔐 ADMIN PANEL</div>
+            <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:8px;">Đăng nhập Admin</h2>
+            <p style="color:rgba(255,255,255,0.7);font-size:0.9rem;margin-bottom:24px;">Chỉ admin mới có quyền chỉnh sửa
+                thông tin và ảnh học sinh.</p>
+            <div class="input-group">
+                <label for="admin-pass">Mật khẩu Admin</label>
+                <input type="password" id="admin-pass" placeholder="Nhập mật khẩu..." autocomplete="current-password" />
+            </div>
+            <button class="btn-primary" onclick="doLogin()">🔓 Đăng nhập</button>
+            <div class="error-msg" id="login-error" style="display:none;margin-top:14px;">Sai mật khẩu! Vui lòng thử
+                lại.</div>
+            <div style="margin-top:20px;">
+                <a href="index.html" class="admin-link">← Về trang chính</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN CONTENT (hidden until login) -->
+    <div id="admin-content" class="admin-content">
+        <div class="admin-header">
+            <h1>🌸 Admin – ITA22 | Chỉnh sửa thông tin học sinh</h1>
+            <div style="display:flex;gap:16px;align-items:center;">
+                <button class="btn-primary" style="width:auto;padding:9px 20px;font-size:0.85rem;"
+                    onclick="saveAllData()">💾 Lưu tất cả</button>
+                <a href="index.html">← Trang chính</a>
+                <button onclick="doLogout()"
+                    style="background:none;border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.7);padding:7px 14px;border-radius:50px;cursor:pointer;font-family:var(--font-main);font-size:0.8rem;">Đăng
+                    xuất</button>
+            </div>
+        </div>
+
+        <div style="text-align:center;padding:20px 24px 0;color:rgba(255,255,255,0.6);font-size:0.85rem;">
+            💡 Nhấn vào ảnh để thay ảnh • Chỉnh tên và lời nhắn • Nhấn <strong
+                style="color:var(--pink-light)">Lưu</strong> để cập nhật từng người
+        </div>
+
+        <div class="admin-grid" id="admin-grid"></div>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+        const ADMIN_PASS = "admin83"; // ← Đổi mật khẩu tại đây
+
+        function doLogin() {
+            const val = document.getElementById('admin-pass').value;
+            if (val === ADMIN_PASS) {
+                document.getElementById('admin-login').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                sessionStorage.setItem('adminLoggedIn', '1');
+                renderAdminGrid();
+            } else {
+                const err = document.getElementById('login-error');
+                err.style.display = 'block';
+                err.textContent = '❌ Sai mật khẩu! Vui lòng thử lại.';
+            }
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem('adminLoggedIn');
+            document.getElementById('admin-content').style.display = 'none';
+            document.getElementById('admin-login').style.display = 'flex';
+            document.getElementById('admin-pass').value = '';
+        }
+
+        // Auto-login if session exists
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('adminLoggedIn')) {
+                document.getElementById('admin-login').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                renderAdminGrid();
+            }
+            document.getElementById('admin-pass').addEventListener('keydown', e => {
+                if (e.key === 'Enter') doLogin();
+            });
+        });
+
+        function renderAdminGrid() {
+            const data = loadStudentData();
+            const grid = document.getElementById('admin-grid');
+            grid.innerHTML = '';
+            data.forEach(student => {
+                const card = document.createElement('div');
+                card.className = 'student-edit-card';
+                card.id = `card-${student.id}`;
+                card.innerHTML = `
+          <div class="edit-id">Số thứ tự: <strong>${String(student.id).padStart(2, '0')}</strong></div>
+          <div class="edit-photo-wrap" onclick="triggerPhotoUpload(${student.id})" title="Nhấn để đổi ảnh">
+            <img class="edit-photo" id="photo-${student.id}" 
+                 src="${student.photo || 'photos/default.jpg'}" 
+                 onerror="this.src='photos/default.jpg'"
+                 alt="${student.name}" />
+            <div class="edit-overlay">📷</div>
+          </div>
+          <input type="file" id="file-${student.id}" accept="image/*" style="display:none"
+                 onchange="handlePhotoChange(${student.id}, this)" />
+          <input class="edit-input-name" id="name-${student.id}" 
+                 type="text" value="${escHtml(student.name)}" placeholder="Họ và tên..." />
+          <textarea class="edit-input-msg" id="msg-${student.id}" 
+                    placeholder="Lời nhắn riêng (bỏ trống = dùng lời nhắn mặc định)...">${escHtml(student.message || '')}</textarea>
+          <button class="btn-save-one" onclick="saveSingle(${student.id})">💾 Lưu</button>
+          <div class="saved-badge" id="badge-${student.id}">✅ Đã lưu!</div>
+        `;
+                grid.appendChild(card);
+            });
+        }
+
+        function escHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function triggerPhotoUpload(id) {
+            document.getElementById(`file-${id}`).click();
+        }
+
+        function handlePhotoChange(id, input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const dataUrl = e.target.result;
+                // Preview immediately
+                document.getElementById(`photo-${id}`).src = dataUrl;
+                // Save dataUrl as photo for this student
+                const idx = students.findIndex(s => s.id === id);
+                if (idx !== -1) students[idx].photo = dataUrl;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveSingle(id) {
+            const idx = students.findIndex(s => s.id === id);
+            if (idx === -1) return;
+            students[idx].name = document.getElementById(`name-${id}`).value.trim();
+            students[idx].message = document.getElementById(`msg-${id}`).value.trim();
+            // photo already updated live in handlePhotoChange
+            saveStudentData();
+            const badge = document.getElementById(`badge-${id}`);
+            badge.style.display = 'inline-block';
+            setTimeout(() => { badge.style.display = 'none'; }, 2000);
+        }
+
+        function saveAllData() {
+            students.forEach((s, idx) => {
+                const nameEl = document.getElementById(`name-${s.id}`);
+                const msgEl = document.getElementById(`msg-${s.id}`);
+                if (nameEl) students[idx].name = nameEl.value.trim();
+                if (msgEl) students[idx].message = msgEl.value.trim();
+            });
+            saveStudentData();
+            alert('✅ Đã lưu tất cả thông tin thành công!');
+        }
+    </script>
+</body>
+
+</html>
