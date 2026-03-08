@@ -440,17 +440,34 @@ function animate() {
 
         const oldPos = controls.getObject().position.clone();
 
-        // Di chuyển trục X và kiểm tra va chạm
-        controls.moveRight(-velocity.x * delta);
-        if (checkCollision(controls.getObject().position)) {
-            controls.getObject().position.x = oldPos.x;
-            // Bỏ gán velocity = 0 để giúp nhân vật TRƯỢT dọc theo tường thay vì khựng lại
+        // TÍNH TOÁN VECTOR DI CHUYỂN TOÀN CỤC SAO CHO KHÔNG BỊ TRƯỢT XUYÊN GÓC TƯỜNG
+        const lateralVec = new THREE.Vector3();
+        lateralVec.setFromMatrixColumn(camera.matrix, 0); // Vector hướng phải
+        lateralVec.y = 0; lateralVec.normalize();
+
+        const forwardVec = new THREE.Vector3();
+        forwardVec.setFromMatrixColumn(camera.matrix, 0);
+        forwardVec.crossVectors(camera.up, forwardVec); // Vector hướng tới
+        forwardVec.y = 0; forwardVec.normalize();
+
+        const displacement = new THREE.Vector3();
+        displacement.addScaledVector(lateralVec, -velocity.x * delta);
+        displacement.addScaledVector(forwardVec, -velocity.z * delta);
+
+        const pos = controls.getObject().position;
+        const oldX = pos.x;
+        const oldZ = pos.z;
+
+        // Di chuyển trục X và kiểm tra va chạm ĐỘC LẬP
+        pos.x += displacement.x;
+        if (checkCollision(pos)) {
+            pos.x = oldX; // Phục hồi X nếu đâm tường X
         }
 
-        // Di chuyển trục Z và kiểm tra va chạm
-        controls.moveForward(-velocity.z * delta);
-        if (checkCollision(controls.getObject().position)) {
-            controls.getObject().position.z = oldPos.z;
+        // Di chuyển trục Z và kiểm tra va chạm ĐỘC LẬP
+        pos.z += displacement.z;
+        if (checkCollision(pos)) {
+            pos.z = oldZ; // Phục hồi Z nếu đâm tường Z
         }
 
         controls.getObject().position.y += (velocity.y * delta); // Jump
@@ -462,7 +479,6 @@ function animate() {
         }
 
         // Chặn tường cơ bản (Dài 22m, Rộng 16m -> Tọa độ ranh giới: z: -11 đến +11, x: -8 đến +8)
-        let pos = controls.getObject().position;
         if (pos.x < -7.5) pos.x = -7.5;
         if (pos.x > 7.5) pos.x = 7.5;
         if (pos.z < -10.5) pos.z = -10.5;
@@ -562,7 +578,9 @@ let joyManager = null;
 let touchX = 0, touchY = 0;
 
 function setupMobileControls() {
-    if (window.innerWidth > 768) return; // Chỉ chạy trên Mobile
+    // Chạy nếu là màn hình nhỏ hoăc là thiết bị có màn hình cảm ứng (Ví dụ xoay ngang màn hình)
+    const isMobile = window.innerWidth <= 950 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    if (!isMobile) return;
 
     // 1. Joystick điều hướng di chuyển
     joyManager = nipplejs.create({

@@ -174,7 +174,9 @@
       z-index: 90;
     }
 
-    @media (max-width: 768px) {
+    /* Ưu tiên hiển thị điều khiển Mobile trên điện thoại chéo/ngang và có màn hình cảm ứng */
+    @media (max-width: 950px),
+    (pointer: coarse) {
       #instructions p.pc-only {
         display: none;
       }
