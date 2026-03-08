@@ -20,7 +20,6 @@ const direction = new THREE.Vector3();
 
 // Animations
 let ceilingFans = [];
-let wallFans = [];
 
 // Helper cho Mobile
 function isMobileView() {
@@ -320,7 +319,6 @@ function init() {
     // Dùng cơ chế: Tạo quạt bằng Code trước (luôn hiện), sau đó thay bằng Model GLB (nếu load xong)
 
     const ceilingFanGroups = [];
-    const wallFanGroups = [];
 
     // 1. Khởi tạo 4 Quạt trần bằng Code (Procedural)
     const cfPositions = [{ x: -5, z: -8 }, { x: 5, z: -8 }, { x: -5, z: 8 }, { x: 5, z: 8 }];
@@ -382,65 +380,7 @@ function init() {
         });
     }
 
-    // 3. Khởi tạo 3 Quạt treo tường bằng Code
-    const wfPositions = [-4, 2, 8];
-    wfPositions.forEach((z, idx) => {
-        const group = new THREE.Group();
-        group.position.set(-7.7, 2.5, z);
-        group.rotation.y = Math.PI / 2;
-        scene.add(group);
-        wallFanGroups.push(group);
 
-        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2), new THREE.MeshStandardMaterial({ color: 0x444444 }));
-        hub.rotation.x = Math.PI / 2;
-        hub.castShadow = true; hub.receiveShadow = true;
-
-        const head = new THREE.Group();
-        head.add(hub);
-        group.add(head);
-
-        const rot = new THREE.Group();
-        for (let i = 0; i < 3; i++) {
-            const bl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.01), new THREE.MeshStandardMaterial({ color: 0xff7f2a }));
-            bl.position.y = 0.3;
-            bl.castShadow = true; bl.receiveShadow = true;
-            const p = new THREE.Group(); p.rotation.z = (Math.PI * 2 / 3) * i;
-            p.add(bl); rot.add(p);
-        }
-        rot.position.z = 0.1;
-        head.add(rot);
-
-        wallFans.push({ rotObj: rot, group: head });
-    });
-
-    // 4. Nạp Model Quạt Treo Tường (Thay thế nếu thành công)
-    if (gltfLoader) {
-        gltfLoader.load('models/electric_wall_fan.glb', (gltf) => {
-            wfPositions.forEach((z, idx) => {
-                const model = gltf.scene.clone();
-                model.traverse(c => { if (c.isCamera || c.isLight) c.visible = false; });
-                const box = new THREE.Box3().setFromObject(model);
-                const size = box.getSize(new THREE.Vector3());
-                const center = box.getCenter(new THREE.Vector3());
-                const scale = 1.3 / Math.max(size.y, size.z, 0.001);
-                model.scale.set(scale, scale, scale);
-                model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-
-                const targetGroup = wallFanGroups[idx];
-                while (targetGroup.children.length > 0) targetGroup.remove(targetGroup.children[0]);
-
-                const newHead = new THREE.Group();
-                newHead.add(model);
-                targetGroup.add(newHead);
-
-                let blades = model;
-                model.traverse(c => {
-                    if (c.isMesh && Math.max(new THREE.Box3().setFromObject(c).getSize(new THREE.Vector3()).y) > 0.5) blades = c;
-                });
-                wallFans[idx] = { rotObj: blades, group: newHead };
-            });
-        });
-    }
 
     // ================= TẠO BÀN HỌC & THIỆP =================
     // Dãy: 4 dãy. Hàng: 5 hàng.
@@ -623,12 +563,6 @@ function animate() {
 
     // Hoạt cảnh quạt trần 
     ceilingFans.forEach(fan => fan.rotation.y -= 0.1);
-
-    // Hoạt cảnh quạt treo tường (xoay cánh và xoay cổ gật gù)
-    wallFans.forEach((f, idx) => {
-        f.rotObj.rotation.x -= 0.3; // Cánh tua pin
-        f.group.rotation.y = Math.sin(time / 1000 + idx) * 0.4; // Đảo cổ quạt trái phải
-    });
 
     prevTime = time;
     renderer.render(scene, camera);
