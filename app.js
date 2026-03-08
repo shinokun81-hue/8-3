@@ -340,55 +340,48 @@ function init() {
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
                     function (gltf) {
-                        // 1. Phải Dùng .clone() để 4 Quạt không bị Three.js gộp chung thành một vật thẻ di chuyển qua lại
+                        // 1. Phải Dùng .clone() để 4 Quạt tách biệt hoàn toàn
                         const fan = gltf.scene.clone();
 
-                        // 2. Tính Tỷ lệ Zoom (Scale) tự động để Sải Cánh đúng 8.0 mét.
+                        // 2. Tinh chỉnh Scale và RESET tâm của Model về 0,0,0
                         const box = new THREE.Box3().setFromObject(fan);
                         const size = box.getSize(new THREE.Vector3());
+                        const centerBox = box.getCenter(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.z, 0.001);
                         const scaleFactor = 8.0 / maxDim;
+
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                        // QUAN TRỌNG: Phải dịch con của scene về tâm để khi xoay nó không bị văng quỹ đạo
+                        fan.position.set(-centerBox.x * scaleFactor, -centerBox.y * scaleFactor, -centerBox.z * scaleFactor);
 
-                        // Lưu ý: KHÔNG chỉnh tâm fan.position qua centerBox nữa, bản thân Quạt đã ở origin
-                        // Điều này ngăn chặn việc Quạt bị văng quỹ đạo quay ngáo.
-
-                        // 3. Treo Quạt lên trần
+                        // 3. Đặt vào Wrapper để ghim vị trí trên trần nhà (x, 3.8, z)
                         const wrapper = new THREE.Group();
                         wrapper.position.set(x, 3.8, z);
                         wrapper.add(fan);
                         scene.add(wrapper);
 
-                        // 4. Giải thuật Tìm Rô-tơ Cánh Quạt Thông Minh (Để giữ Chân Đế không quay)
+                        // 4. Tìm bộ phận cánh quạt để xoay (Giữ chân đế đứng yên)
                         let widestMesh = null;
                         let maxSpan = 0;
                         fan.traverse((child) => {
                             if (child.isMesh) {
-                                // Đo độ sải cánh của từng mảnh vật thật (Mesh)
-                                const childBox = new THREE.Box3().setFromObject(child);
-                                const childSize = childBox.getSize(new THREE.Vector3());
-                                const span = Math.max(childSize.x, childSize.z);
+                                const cBox = new THREE.Box3().setFromObject(child);
+                                const cSize = cBox.getSize(new THREE.Vector3());
+                                const span = Math.max(cSize.x, cSize.z);
                                 if (span > maxSpan) {
                                     maxSpan = span;
-                                    widestMesh = child; // Ai sải tay rộng nhất -> Người đó là Cánh quạt
+                                    widestMesh = child;
                                 }
                             }
                         });
 
-                        // 5. Xác định cụm Trục Xoay
-                        let partToRotate = widestMesh;
-                        if (partToRotate) {
-                            // Lùi nhánh lên Group cao nhất nhưng cấm đụng tới vỏ ngoài (chứa chân đế)
-                            // Tránh việc trục Y bị quay nhầm nếu model xuất Blender lộn.
-                            while (partToRotate.parent &&
-                                partToRotate.parent.type !== 'Scene' &&
-                                partToRotate.parent.name !== 'GLTF_SceneRootNode' &&
-                                partToRotate.parent !== fan) {
-                                partToRotate = partToRotate.parent;
+                        if (widestMesh) {
+                            let rotor = widestMesh;
+                            while (rotor.parent && rotor.parent !== fan && rotor.parent.type !== 'Scene') {
+                                rotor = rotor.parent;
                             }
-                            ceilingFans.push(partToRotate);
+                            ceilingFans.push(rotor);
                         } else {
-                            // Fallback
                             ceilingFans.push(fan);
                         }
                     },
