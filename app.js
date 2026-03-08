@@ -334,8 +334,8 @@ function init() {
         ceilingFans.push(rotObj);
     }
 
-    for (let x of [-5.5, 5.5]) {
-        for (let z of [-5, 4]) {
+    for (let x of [-6, 6]) {
+        for (let z of [-7, 7]) {
             if (gltfLoader) {
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
@@ -343,11 +343,11 @@ function init() {
                         // 1. Phải Dùng .clone() để 4 Quạt không bị Three.js gộp chung thành một vật thẻ di chuyển qua lại
                         const fan = gltf.scene.clone();
 
-                        // 2. Tính Tỷ lệ Zoom (Scale) tự động để Sải Cánh đúng 3.5 mét.
+                        // 2. Tính Tỷ lệ Zoom (Scale) tự động để Sải Cánh đúng 8.0 mét.
                         const box = new THREE.Box3().setFromObject(fan);
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.z, 0.001);
-                        const scaleFactor = 3.5 / maxDim;
+                        const scaleFactor = 8.0 / maxDim;
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
                         // Lưu ý: KHÔNG chỉnh tâm fan.position qua centerBox nữa, bản thân Quạt đã ở origin
