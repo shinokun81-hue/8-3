@@ -340,47 +340,56 @@ function init() {
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
                     function (gltf) {
-                        const fan = gltf.scene;
+                        // 1. Phải Dùng .clone() để 4 Quạt không bị Three.js gộp chung thành một vật thẻ di chuyển qua lại
+                        const fan = gltf.scene.clone();
 
-                        // 1. Lấy thông số Bounding Box lúc ban đầu
+                        // 2. Tính Tỷ lệ Zoom (Scale) tự động để Sải Cánh đúng 3.5 mét.
                         const box = new THREE.Box3().setFromObject(fan);
                         const size = box.getSize(new THREE.Vector3());
-                        const centerBox = box.getCenter(new THREE.Vector3());
-
-                        // 2. Tính Tỷ lệ phóng to/thu nhỏ sao cho sải cánh quạt dài chuẩn 3.0 mét
                         const maxDim = Math.max(size.x, size.z, 0.001);
-                        const scaleFactor = 3.0 / maxDim;
-
-                        // 3. Phóng to mô hình
+                        const scaleFactor = 3.5 / maxDim;
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-                        // 4. Dịch chuyển ĐẢO NGƯỢC Trọng tâm VỀ SỐ KHÔNG (origin).
-                        // Vì Box3 tính toạ độ ban đầu, để đẩy nó thụt lùi lại ta phải nhân bù trừ với độ scale mới.
-                        fan.position.set(-centerBox.x * scaleFactor, -centerBox.y * scaleFactor, -centerBox.z * scaleFactor);
+                        // Lưu ý: KHÔNG chỉnh tâm fan.position qua centerBox nữa, bản thân Quạt đã ở origin
+                        // Điều này ngăn chặn việc Quạt bị văng quỹ đạo quay ngáo.
 
-                        // 5. Cắm Quạt vào một Lõi quay trung tâm (Rotator)
-                        const rotator = new THREE.Group();
-                        rotator.add(fan); // Lõi sẽ xoay tròn tại vị trí (0,0,0) và kéo cái quạt theo
-
-                        // 6. Treo nguyên bộ lên trần
+                        // 3. Treo Quạt lên trần
                         const wrapper = new THREE.Group();
-                        wrapper.position.set(x, 3.8, z); // Độ cao trần nhà
-                        wrapper.add(rotator);
+                        wrapper.position.set(x, 3.8, z);
+                        wrapper.add(fan);
                         scene.add(wrapper);
 
-                        // 7. Quét TÊN của từng bộ phận để chỉ xoay nhánh mang tên Cánh quạt
-                        let isPartsSeparated = false;
+                        // 4. Giải thuật Tìm Rô-tơ Cánh Quạt Thông Minh (Để giữ Chân Đế không quay)
+                        let widestMesh = null;
+                        let maxSpan = 0;
                         fan.traverse((child) => {
-                            const name = child.name.toLowerCase();
-                            if ((child.isGroup || child.isMesh) && (name.includes('blade') || name.includes('rotor') || name.includes('spin') || name.includes('wing'))) {
-                                ceilingFans.push(child);
-                                isPartsSeparated = true;
+                            if (child.isMesh) {
+                                // Đo độ sải cánh của từng mảnh vật thật (Mesh)
+                                const childBox = new THREE.Box3().setFromObject(child);
+                                const childSize = childBox.getSize(new THREE.Vector3());
+                                const span = Math.max(childSize.x, childSize.z);
+                                if (span > maxSpan) {
+                                    maxSpan = span;
+                                    widestMesh = child; // Ai sải tay rộng nhất -> Người đó là Cánh quạt
+                                }
                             }
                         });
 
-                        // Nếu fan được tạc nguyên khối rắn chắc -> Ép quay toàn bộ cổ quạt qua Rô-tơ
-                        if (!isPartsSeparated) {
-                            ceilingFans.push(rotator);
+                        // 5. Xác định cụm Trục Xoay
+                        let partToRotate = widestMesh;
+                        if (partToRotate) {
+                            // Lùi nhánh lên Group cao nhất nhưng cấm đụng tới vỏ ngoài (chứa chân đế)
+                            // Tránh việc trục Y bị quay nhầm nếu model xuất Blender lộn.
+                            while (partToRotate.parent &&
+                                partToRotate.parent.type !== 'Scene' &&
+                                partToRotate.parent.name !== 'GLTF_SceneRootNode' &&
+                                partToRotate.parent !== fan) {
+                                partToRotate = partToRotate.parent;
+                            }
+                            ceilingFans.push(partToRotate);
+                        } else {
+                            // Fallback
+                            ceilingFans.push(fan);
                         }
                     },
                     undefined,
