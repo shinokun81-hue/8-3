@@ -573,8 +573,7 @@ function closeStudentCard() {
     controls.lock();
 }
 
-// MOBILE CONTROLS NÂNG CAO (NippleJS & Touch Look)
-let joyManager = null;
+// MOBILE CONTROLS (4 Nút bấm & Touch Look)
 let touchX = 0, touchY = 0;
 
 function setupMobileControls() {
@@ -582,31 +581,13 @@ function setupMobileControls() {
     const isMobile = window.innerWidth <= 950 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     if (!isMobile) return;
 
-    // 1. Joystick điều hướng di chuyển
-    joyManager = nipplejs.create({
-        zone: document.getElementById('mobile-controls'),
-        mode: 'static',
-        position: { left: '60px', bottom: '60px' },
-        color: 'white',
-        size: 100
-    });
-
-    joyManager.on('move', function (evt, data) {
-        moveForward = moveBackward = moveLeft = moveRight = false;
-        if (data.angle.degree > 45 && data.angle.degree < 135) moveForward = true;
-        if (data.angle.degree > 225 && data.angle.degree < 315) moveBackward = true;
-        if (data.angle.degree >= 135 && data.angle.degree <= 225) moveLeft = true;
-        if (data.angle.degree <= 45 || data.angle.degree >= 315) moveRight = true;
-
-        // Cập nhật ngắm chéo
-        if (data.angle.degree > 20 && data.angle.degree < 80) { moveForward = true; moveRight = true; }
-        if (data.angle.degree > 100 && data.angle.degree < 160) { moveForward = true; moveLeft = true; }
-        if (data.angle.degree > 200 && data.angle.degree < 260) { moveBackward = true; moveLeft = true; }
-        if (data.angle.degree > 280 && data.angle.degree < 340) { moveBackward = true; moveRight = true; }
-    });
-
-    joyManager.on('end', function () {
-        moveForward = moveBackward = moveLeft = moveRight = false;
+    // 1. Joystick 4 hướng (Thay thế bằng 4 nút W A S D)
+    ['w', 'a', 's', 'd'].forEach(k => {
+        const btn = document.getElementById('btn-' + k);
+        if (btn) {
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerKey(k, true); });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); triggerKey(k, false); });
+        }
     });
 
     // 2. Chà vùng nửa màn hình phải để xoay Camera (Touch Look)
@@ -624,10 +605,11 @@ function setupMobileControls() {
         touchX = e.touches[0].pageX;
         touchY = e.touches[0].pageY;
 
-        // Mô phỏng xoay (Giống chuột máy tính)
+        // Xoay TẤT CẢ nhân vật trái/phải 360 độ để sửa lỗi khựng (Giống chuột máy tính)
+        controls.getObject().rotation.y -= deltaX * 0.005;
+
+        // Góc ngước lên ngước xuống (Chỉ xoay Camera)
         const PI_2 = Math.PI / 2;
-        camera.rotation.y -= deltaX * 0.005;
-        // Giới hạn xoay lên/xuống
         const _pitchObject = controls.getObject().children[0];
         _pitchObject.rotation.x -= deltaY * 0.005;
         _pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, _pitchObject.rotation.x));
@@ -635,6 +617,13 @@ function setupMobileControls() {
 
     // Tap để click (Mô phỏng click chuột ngắm bắn)
     lookZone.addEventListener('click', () => { onClick(); });
+}
+
+function triggerKey(key, isDown) {
+    if (key === 'w') moveForward = isDown;
+    if (key === 's') moveBackward = isDown;
+    if (key === 'a') moveLeft = isDown;
+    if (key === 'd') moveRight = isDown;
 }
 
 window.addEventListener('load', setupMobileControls);

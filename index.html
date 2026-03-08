@@ -191,17 +191,16 @@
       }
 
       #mobile-controls {
-        display: block;
-        width: 120px;
-        height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 150px;
         bottom: 40px;
-        left: 30px;
+        left: 20px;
       }
 
-      .joy-row,
-      .joy-btn {
-        display: none;
-        /* Ẩn nút cũ */
+      .joy-row {
+        display: flex;
       }
 
       #mobile-look {
@@ -352,8 +351,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
