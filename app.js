@@ -264,10 +264,10 @@ function init() {
     const bannerCanvas = document.createElement('canvas'); bannerCanvas.width = 2048; bannerCanvas.height = 256;
     const bCtx = bannerCanvas.getContext('2d');
     bCtx.fillStyle = "#c9184a"; bCtx.fillRect(0, 0, 2048, 256);
-    bCtx.fillStyle = "#ffd700"; bCtx.font = "bold 90px sans-serif"; bCtx.textAlign = "center";
-    bCtx.fillText("SỐNG, CHIẾN ĐẤU, LAO ĐỘNG VÀ HỌC TẬP THEO GƯƠNG BÁC HỒ VĨ ĐẠI", 1024, 160);
+    bCtx.fillStyle = "#ffd700"; bCtx.font = "bold 75px sans-serif"; bCtx.textAlign = "center";
+    bCtx.fillText("SỐNG, CHIẾN ĐẤU, LAO ĐỘNG VÀ HỌC TẬP THEO GƯƠNG BÁC HỒ VĨ ĐẠI", 1024, 155);
     const bannerMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bannerCanvas) });
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.8), bannerMat);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 0.7), bannerMat);
     banner.position.set(0, 3.3, -10.9);
     scene.add(banner);
 
