@@ -334,51 +334,57 @@ function init() {
         ceilingFans.push(rotObj);
     }
 
-    for (let x of [-6, 6]) {
-        for (let z of [-7, 7]) {
-            if (gltfLoader) {
-                gltfLoader.load(
-                    'models/ceiling_fan.glb',
-                    function (gltf) {
-                        // 1. Clone model
-                        const fan = gltf.scene.clone();
+    const fanPositions = [
+        { x: -6, z: -7 },
+        { x: 6, z: -7 },
+        { x: -6, z: 7 },
+        { x: 6, z: 7 }
+    ];
 
-                        // 2. Tính toán tỷ lệ sải cánh (8 mét)
-                        const box = new THREE.Box3().setFromObject(fan);
-                        const center = box.getCenter(new THREE.Vector3());
-                        const size = box.getSize(new THREE.Vector3());
-                        const maxDim = Math.max(size.x, size.z, 0.001);
-                        const scale = 8.0 / maxDim;
+    fanPositions.forEach(pos => {
+        if (gltfLoader) {
+            gltfLoader.load(
+                'models/ceiling_fan.glb',
+                function (gltf) {
+                    // 1. Clone để có 4 thực thể riêng biệt
+                    const fan = gltf.scene.clone();
 
-                        // 3. Chuẩn hoá Model
-                        fan.scale.set(scale, scale, scale);
-                        // QUAN TRỌNG: Đưa tâm thực của quạt về (0,0,0) của cha nó
-                        fan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-                        fan.rotation.set(0, 0, 0);
+                    // 2. Tinh chỉnh kích thước (10m cho hoành tráng)
+                    const box = new THREE.Box3().setFromObject(fan);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.z, 0.001);
+                    const scale = 10.0 / maxDim;
 
-                        // 4. Tạo mô tơ xoay (Rotator) - đảm bảo xoay quanh trục Y thẳng đứng
-                        const rotator = new THREE.Group();
-                        rotator.add(fan);
+                    fan.scale.set(scale, scale, scale);
+                    // Reset tâm quạt về origin của chính nó
+                    fan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+                    fan.rotation.set(0, 0, 0);
 
-                        // 5. Treo lên trần nhà (Wrapper)
-                        const wrapper = new THREE.Group();
-                        wrapper.position.set(x, 3.8, z);
-                        wrapper.add(rotator);
-                        scene.add(wrapper);
+                    // 3. Mô tơ xoay
+                    const rotator = new THREE.Group();
+                    rotator.add(fan);
 
-                        // 6. Cho rotator vào danh sách xoay (Xoay cả cái quạt để tránh lỗi gãy cánh do model lỗi)
-                        ceilingFans.push(rotator);
-                    },
-                    undefined,
-                    function (error) {
-                        buildFallbackFan(x, z);
-                    }
-                );
-            } else {
-                buildFallbackFan(x, z);
-            }
+                    // 4. Wrapper cố định trên trần nhà (3.95m - Rất sát trần)
+                    const wrapper = new THREE.Group();
+                    wrapper.position.set(pos.x, 3.95, pos.z);
+                    wrapper.add(rotator);
+
+                    // Thêm trực tiếp vào scene chính của ứng dụng
+                    scene.add(wrapper);
+
+                    // 5. Thêm vào danh sách cập nhật animation
+                    ceilingFans.push(rotator);
+                },
+                undefined,
+                function (error) {
+                    buildFallbackFan(pos.x, pos.z);
+                }
+            );
+        } else {
+            buildFallbackFan(pos.x, pos.z);
         }
-    }
+    });
 
     // Quạt treo tường (Wall fans)
     const wallFanMat = new THREE.MeshStandardMaterial({ color: 0x444444 }); // Lồng sắt
