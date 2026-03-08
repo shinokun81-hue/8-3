@@ -334,8 +334,8 @@ function init() {
         ceilingFans.push(rotObj);
     }
 
-    for (let x of [-3.5, 3.5]) {
-        for (let z of [-3, 5]) {
+    for (let x of [-5.5, 5.5]) {
+        for (let z of [-5, 4]) {
             if (gltfLoader) {
                 // Tải model nếu có
                 gltfLoader.load(
@@ -351,9 +351,9 @@ function init() {
                         // Dịch model sao cho TÂM của nó nằm ngay trục 0,0,0 của vỏ wrapper
                         fan.position.set(-centerBox.x, -centerBox.y, -centerBox.z);
 
-                        // Tính tỷ lệ Scale để quạt to vừa, không bị tủn mủn
+                        // Tính tỷ lệ Scale để quạt to ra
                         const maxDim = Math.max(size.x, size.z);
-                        const scaleFactor = (maxDim > 0) ? (7.0 / maxDim) : 1;
+                        const scaleFactor = (maxDim > 0) ? (14.0 / maxDim) : 1;
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
                         // Gắn vào một Group (vỏ wrapper) để Treo lên trần
@@ -362,7 +362,25 @@ function init() {
                         wrapper.add(fan);
 
                         scene.add(wrapper);
-                        ceilingFans.push(fan); // CHỈ Xoay cái lõi `fan` bên trong, KHÔNG xoay cái vỏ Treo Trần
+
+                        // Tìm phần trục cánh quạt để xoay độc lập (Thường model thiết kế tách rời phần "Rotor", "Blade")
+                        let isPartsSeparated = false;
+                        fan.traverse((child) => {
+                            const name = child.name.toLowerCase();
+                            // Nếu tìm thấy một nhóm con nào có tên bao hàm 'blade', 'rotor', 'spin' -> Chỉ xoay nhóm đó
+                            if (child.isGroup || child.isMesh) {
+                                if (name.includes('blade') || name.includes('rotor') || name.includes('spin') || name.includes('wing')) {
+                                    ceilingFans.push(child);
+                                    isPartsSeparated = true;
+                                }
+                            }
+                        });
+
+                        // Nếu Model tải về làm gộp cứng chung 1 khối (Base + Cánh dính chặt không thể tách rời)
+                        // Buộc phải xoay nguyên cả cái quạt.
+                        if (!isPartsSeparated) {
+                            ceilingFans.push(fan);
+                        }
                     },
                     undefined,
                     function (error) {
