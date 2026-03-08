@@ -1,59 +1,70 @@
-// Dữ liệu học sinh - Admin có thể chỉnh sửa qua trang admin.html
-const ADMIN_PASSWORD = "admin83";
+// data.js – Danh sách mặc định 34 học sinh
+// Dữ liệu thật được lưu trên Firestore (collection: "students")
+// File này chỉ dùng để hiển thị tên mặc định khi chưa có data trên cloud
 
-const students = [
-  { id: 1,  name: "Nguyễn Thị An",        photo: "photos/01.jpg", message: "" },
-  { id: 2,  name: "Trần Thị Bình",         photo: "photos/02.jpg", message: "" },
-  { id: 3,  name: "Lê Thị Chi",            photo: "photos/03.jpg", message: "" },
-  { id: 4,  name: "Phạm Thị Dung",         photo: "photos/04.jpg", message: "" },
-  { id: 5,  name: "Hoàng Thị Em",          photo: "photos/05.jpg", message: "" },
-  { id: 6,  name: "Vũ Thị Phương",         photo: "photos/06.jpg", message: "" },
-  { id: 7,  name: "Đặng Thị Giang",        photo: "photos/07.jpg", message: "" },
-  { id: 8,  name: "Bùi Thị Hà",            photo: "photos/08.jpg", message: "" },
-  { id: 9,  name: "Ngô Thị Hương",         photo: "photos/09.jpg", message: "" },
-  { id: 10, name: "Dương Thị Lan",         photo: "photos/10.jpg", message: "" },
-  { id: 11, name: "Lý Thị Mai",            photo: "photos/11.jpg", message: "" },
-  { id: 12, name: "Đinh Thị Ngân",         photo: "photos/12.jpg", message: "" },
-  { id: 13, name: "Trịnh Thị Oanh",        photo: "photos/13.jpg", message: "" },
-  { id: 14, name: "Cao Thị Phúc",          photo: "photos/14.jpg", message: "" },
-  { id: 15, name: "Hà Thị Quỳnh",          photo: "photos/15.jpg", message: "" },
-  { id: 16, name: "Lưu Thị Rạng",          photo: "photos/16.jpg", message: "" },
-  { id: 17, name: "Tô Thị Sương",          photo: "photos/17.jpg", message: "" },
-  { id: 18, name: "Phan Thị Thảo",         photo: "photos/18.jpg", message: "" },
-  { id: 19, name: "Võ Thị Uyên",           photo: "photos/19.jpg", message: "" },
-  { id: 20, name: "La Thị Vân",            photo: "photos/20.jpg", message: "" },
-  { id: 21, name: "Châu Thị Xuân",         photo: "photos/21.jpg", message: "" },
-  { id: 22, name: "Sum Thị Yến",           photo: "photos/22.jpg", message: "" },
-  { id: 23, name: "Mạc Thị Zung",          photo: "photos/23.jpg", message: "" },
-  { id: 24, name: "Huỳnh Thị Ánh",         photo: "photos/24.jpg", message: "" },
-  { id: 25, name: "Đoàn Thị Bảo",          photo: "photos/25.jpg", message: "" },
-  { id: 26, name: "Cù Thị Châu",           photo: "photos/26.jpg", message: "" },
-  { id: 27, name: "Dư Thị Diệu",           photo: "photos/27.jpg", message: "" },
-  { id: 28, name: "Ê Thị Đào",             photo: "photos/28.jpg", message: "" },
-  { id: 29, name: "Ghê Thị Gấm",           photo: "photos/29.jpg", message: "" },
-  { id: 30, name: "Hứa Thị Hân",           photo: "photos/30.jpg", message: "" },
-  { id: 31, name: "Inh Thị Inh",           photo: "photos/31.jpg", message: "" },
-  { id: 32, name: "Kha Thị Kim",           photo: "photos/32.jpg", message: "" },
-  { id: 33, name: "La Thị Lài",            photo: "photos/33.jpg", message: "" },
-  { id: 34, name: "Ma Thị Mận",            photo: "photos/34.jpg", message: "" }
+const defaultStudents = [
+  { id: 1, name: "Học sinh 01" },
+  { id: 2, name: "Học sinh 02" },
+  { id: 3, name: "Học sinh 03" },
+  { id: 4, name: "Học sinh 04" },
+  { id: 5, name: "Học sinh 05" },
+  { id: 6, name: "Học sinh 06" },
+  { id: 7, name: "Học sinh 07" },
+  { id: 8, name: "Học sinh 08" },
+  { id: 9, name: "Học sinh 09" },
+  { id: 10, name: "Học sinh 10" },
+  { id: 11, name: "Học sinh 11" },
+  { id: 12, name: "Học sinh 12" },
+  { id: 13, name: "Học sinh 13" },
+  { id: 14, name: "Học sinh 14" },
+  { id: 15, name: "Học sinh 15" },
+  { id: 16, name: "Học sinh 16" },
+  { id: 17, name: "Học sinh 17" },
+  { id: 18, name: "Học sinh 18" },
+  { id: 19, name: "Học sinh 19" },
+  { id: 20, name: "Học sinh 20" },
+  { id: 21, name: "Học sinh 21" },
+  { id: 22, name: "Học sinh 22" },
+  { id: 23, name: "Học sinh 23" },
+  { id: 24, name: "Học sinh 24" },
+  { id: 25, name: "Học sinh 25" },
+  { id: 26, name: "Học sinh 26" },
+  { id: 27, name: "Học sinh 27" },
+  { id: 28, name: "Học sinh 28" },
+  { id: 29, name: "Học sinh 29" },
+  { id: 30, name: "Học sinh 30" },
+  { id: 31, name: "Học sinh 31" },
+  { id: 32, name: "Học sinh 32" },
+  { id: 33, name: "Học sinh 33" },
+  { id: 34, name: "Học sinh 34" }
 ];
 
-// Tải dữ liệu từ localStorage nếu có (để admin có thể chỉnh sửa)
-function loadStudentData() {
-  const saved = localStorage.getItem('studentData_83');
-  if (saved) {
-    const savedData = JSON.parse(saved);
-    // Gộp dữ liệu đã lưu
-    savedData.forEach(saved => {
-      const idx = students.findIndex(s => s.id === saved.id);
-      if (idx !== -1) {
-        students[idx] = { ...students[idx], ...saved };
-      }
-    });
-  }
-  return students;
+// Lấy document ID từ số thứ tự (padded: "01", "02", ...)
+function getDocId(num) {
+  return String(num).padStart(2, '0');
 }
 
-function saveStudentData() {
-  localStorage.setItem('studentData_83', JSON.stringify(students));
+// Đọc thông tin 1 học sinh từ Firestore, fallback về defaultStudents
+async function loadStudentById(num) {
+  const docId = getDocId(num);
+  try {
+    const snap = await db.collection('students').doc(docId).get();
+    const def = defaultStudents.find(s => s.id === num) || { id: num, name: `Học sinh ${docId}` };
+    if (snap.exists) {
+      return { ...def, ...snap.data(), id: num };
+    }
+    return { ...def, photoURL: null, message: '' };
+  } catch (e) {
+    console.warn('Firestore error:', e);
+    const def = defaultStudents.find(s => s.id === num) || { id: num, name: `Học sinh ${docId}` };
+    return { ...def, photoURL: null, message: '' };
+  }
+}
+
+// Lưu thông tin học sinh lên Firestore
+async function saveStudentToFirestore(num, name, message, photoURL) {
+  const docId = getDocId(num);
+  const data = { name, message };
+  if (photoURL) data.photoURL = photoURL;
+  await db.collection('students').doc(docId).set(data, { merge: true });
 }

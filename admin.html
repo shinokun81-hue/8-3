@@ -26,21 +26,19 @@
                 <input type="password" id="admin-pass" placeholder="Nhập mật khẩu..." autocomplete="current-password" />
             </div>
             <button class="btn-primary" onclick="doLogin()">🔓 Đăng nhập</button>
-            <div class="error-msg" id="login-error" style="display:none;margin-top:14px;">Sai mật khẩu! Vui lòng thử
-                lại.</div>
+            <div class="error-msg" id="login-error" style="display:none;margin-top:14px;"></div>
             <div style="margin-top:20px;">
                 <a href="index.html" class="admin-link">← Về trang chính</a>
             </div>
         </div>
     </div>
 
-    <!-- ADMIN CONTENT (hidden until login) -->
+    <!-- ADMIN CONTENT -->
     <div id="admin-content" class="admin-content">
         <div class="admin-header">
             <h1>🌸 Admin – ITA22 | Chỉnh sửa thông tin học sinh</h1>
             <div style="display:flex;gap:16px;align-items:center;">
-                <button class="btn-primary" style="width:auto;padding:9px 20px;font-size:0.85rem;"
-                    onclick="saveAllData()">💾 Lưu tất cả</button>
+                <span id="save-all-status" style="color:#5feba0;font-size:0.82rem;display:none;">✅ Đã lưu tất cả!</span>
                 <a href="index.html">← Trang chính</a>
                 <button onclick="doLogout()"
                     style="background:none;border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.7);padding:7px 14px;border-radius:50px;cursor:pointer;font-family:var(--font-main);font-size:0.8rem;">Đăng
@@ -48,25 +46,36 @@
             </div>
         </div>
 
-        <div style="text-align:center;padding:20px 24px 0;color:rgba(255,255,255,0.6);font-size:0.85rem;">
+        <div style="text-align:center;padding:16px 24px 0;color:rgba(255,255,255,0.6);font-size:0.85rem;">
             💡 Nhấn vào ảnh để thay ảnh • Chỉnh tên và lời nhắn • Nhấn <strong
-                style="color:var(--pink-light)">Lưu</strong> để cập nhật từng người
+                style="color:var(--pink-light)">Lưu</strong> để cập nhật lên Firebase
         </div>
 
-        <div class="admin-grid" id="admin-grid"></div>
+        <div id="admin-loading" style="text-align:center;padding:40px;color:rgba(255,255,255,0.6);">
+            ⏳ Đang tải dữ liệu từ Firebase...
+        </div>
+
+        <div class="admin-grid" id="admin-grid" style="display:none;"></div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="data.js"></script>
+
     <script>
         const ADMIN_PASS = "admin83"; // ← Đổi mật khẩu tại đây
 
+        // ── Auth ──────────────────────────────────────────
         function doLogin() {
             const val = document.getElementById('admin-pass').value;
             if (val === ADMIN_PASS) {
                 document.getElementById('admin-login').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
                 sessionStorage.setItem('adminLoggedIn', '1');
-                renderAdminGrid();
+                loadAllStudents();
             } else {
                 const err = document.getElementById('login-error');
                 err.style.display = 'block';
@@ -81,46 +90,72 @@
             document.getElementById('admin-pass').value = '';
         }
 
-        // Auto-login if session exists
         window.addEventListener('DOMContentLoaded', () => {
             if (sessionStorage.getItem('adminLoggedIn')) {
                 document.getElementById('admin-login').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
-                renderAdminGrid();
+                loadAllStudents();
             }
             document.getElementById('admin-pass').addEventListener('keydown', e => {
                 if (e.key === 'Enter') doLogin();
             });
         });
 
-        function renderAdminGrid() {
-            const data = loadStudentData();
-            const grid = document.getElementById('admin-grid');
-            grid.innerHTML = '';
-            data.forEach(student => {
+        // ── Load all students từ Firestore ─────────────────
+        async function loadAllStudents() {
+            const loadingEl = document.getElementById('admin-loading');
+            const gridEl = document.getElementById('admin-grid');
+
+            // Lấy tất cả documents từ Firestore
+            let firestoreData = {};
+            try {
+                const snap = await db.collection('students').get();
+                snap.forEach(doc => { firestoreData[doc.id] = doc.data(); });
+            } catch (e) {
+                console.warn('Firestore load error:', e);
+            }
+
+            loadingEl.style.display = 'none';
+            gridEl.style.display = 'grid';
+            gridEl.innerHTML = '';
+
+            for (let i = 1; i <= 34; i++) {
+                const docId = getDocId(i);
+                const fsData = firestoreData[docId] || {};
+                const defName = defaultStudents.find(s => s.id === i)?.name || `Học sinh ${docId}`;
+                const name = fsData.name || defName;
+                const message = fsData.message || '';
+                const photoURL = fsData.photoURL || '';
+
                 const card = document.createElement('div');
                 card.className = 'student-edit-card';
-                card.id = `card-${student.id}`;
+                card.id = `card-${i}`;
                 card.innerHTML = `
-          <div class="edit-id">Số thứ tự: <strong>${String(student.id).padStart(2, '0')}</strong></div>
-          <div class="edit-photo-wrap" onclick="triggerPhotoUpload(${student.id})" title="Nhấn để đổi ảnh">
-            <img class="edit-photo" id="photo-${student.id}" 
-                 src="${student.photo || 'photos/default.jpg'}" 
+          <div class="edit-id">Số thứ tự: <strong>${docId}</strong></div>
+          <div class="edit-photo-wrap" onclick="triggerPhotoUpload(${i})" title="Nhấn để đổi ảnh">
+            <img class="edit-photo" id="photo-${i}"
+                 src="${photoURL || 'photos/default.jpg'}"
                  onerror="this.src='photos/default.jpg'"
-                 alt="${student.name}" />
+                 alt="${escHtml(name)}" />
             <div class="edit-overlay">📷</div>
           </div>
-          <input type="file" id="file-${student.id}" accept="image/*" style="display:none"
-                 onchange="handlePhotoChange(${student.id}, this)" />
-          <input class="edit-input-name" id="name-${student.id}" 
-                 type="text" value="${escHtml(student.name)}" placeholder="Họ và tên..." />
-          <textarea class="edit-input-msg" id="msg-${student.id}" 
-                    placeholder="Lời nhắn riêng (bỏ trống = dùng lời nhắn mặc định)...">${escHtml(student.message || '')}</textarea>
-          <button class="btn-save-one" onclick="saveSingle(${student.id})">💾 Lưu</button>
-          <div class="saved-badge" id="badge-${student.id}">✅ Đã lưu!</div>
+          <input type="file" id="file-${i}" accept="image/*" style="display:none"
+                 onchange="handlePhotoChange(${i}, this)" />
+
+          <!-- Upload progress -->
+          <div id="progress-${i}" style="display:none;width:100%;background:rgba(255,255,255,0.1);border-radius:50px;height:6px;">
+            <div id="progress-bar-${i}" style="height:100%;border-radius:50px;background:linear-gradient(90deg,#ff6b9d,#9b5de5);width:0%;transition:width 0.3s;"></div>
+          </div>
+
+          <input class="edit-input-name" id="name-${i}"
+                 type="text" value="${escHtml(name)}" placeholder="Họ và tên..." />
+          <textarea class="edit-input-msg" id="msg-${i}"
+                    placeholder="Lời nhắn riêng (bỏ trống = dùng lời nhắn mặc định)...">${escHtml(message)}</textarea>
+          <button class="btn-save-one" id="btn-${i}" onclick="saveSingle(${i})">💾 Lưu lên Firebase</button>
+          <div class="saved-badge" id="badge-${i}">✅ Đã lưu!</div>
         `;
-                grid.appendChild(card);
-            });
+                gridEl.appendChild(card);
+            }
         }
 
         function escHtml(str) {
@@ -131,42 +166,81 @@
             document.getElementById(`file-${id}`).click();
         }
 
-        function handlePhotoChange(id, input) {
+        // ── Upload ảnh lên Firebase Storage ───────────────
+        async function handlePhotoChange(id, input) {
             const file = input.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const dataUrl = e.target.result;
-                // Preview immediately
-                document.getElementById(`photo-${id}`).src = dataUrl;
-                // Save dataUrl as photo for this student
-                const idx = students.findIndex(s => s.id === id);
-                if (idx !== -1) students[idx].photo = dataUrl;
-            };
-            reader.readAsDataURL(file);
+
+            const docId = getDocId(id);
+            const progressEl = document.getElementById(`progress-${id}`);
+            const barEl = document.getElementById(`progress-bar-${id}`);
+            const btnEl = document.getElementById(`btn-${id}`);
+
+            progressEl.style.display = 'block';
+            btnEl.disabled = true;
+            btnEl.textContent = '⏳ Đang upload...';
+
+            try {
+                // Upload lên Firebase Storage: photos/{docId}.jpg
+                const storageRef = storage.ref(`photos/${docId}.jpg`);
+                const uploadTask = storageRef.put(file);
+
+                uploadTask.on('state_changed',
+                    snapshot => {
+                        const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        barEl.style.width = pct + '%';
+                    },
+                    err => {
+                        console.error('Upload error:', err);
+                        alert('❌ Upload ảnh thất bại: ' + err.message);
+                        progressEl.style.display = 'none';
+                        btnEl.disabled = false;
+                        btnEl.textContent = '💾 Lưu lên Firebase';
+                    },
+                    async () => {
+                        // Lấy download URL và preview
+                        const url = await uploadTask.snapshot.ref.getDownloadURL();
+                        document.getElementById(`photo-${id}`).src = url;
+                        // Lưu URL vào Firestore ngay
+                        await db.collection('students').doc(docId).set({ photoURL: url }, { merge: true });
+                        progressEl.style.display = 'none';
+                        btnEl.disabled = false;
+                        btnEl.textContent = '💾 Lưu lên Firebase';
+                        showBadge(id);
+                    }
+                );
+            } catch (e) {
+                alert('❌ Lỗi upload: ' + e.message);
+                progressEl.style.display = 'none';
+                btnEl.disabled = false;
+                btnEl.textContent = '💾 Lưu lên Firebase';
+            }
         }
 
-        function saveSingle(id) {
-            const idx = students.findIndex(s => s.id === id);
-            if (idx === -1) return;
-            students[idx].name = document.getElementById(`name-${id}`).value.trim();
-            students[idx].message = document.getElementById(`msg-${id}`).value.trim();
-            // photo already updated live in handlePhotoChange
-            saveStudentData();
+        // ── Lưu tên + lời nhắn lên Firestore ──────────────
+        async function saveSingle(id) {
+            const btnEl = document.getElementById(`btn-${id}`);
+            const name = document.getElementById(`name-${id}`).value.trim();
+            const msg = document.getElementById(`msg-${id}`).value.trim();
+            const docId = getDocId(id);
+
+            btnEl.disabled = true;
+            btnEl.textContent = '⏳ Đang lưu...';
+            try {
+                await db.collection('students').doc(docId).set({ name, message: msg }, { merge: true });
+                showBadge(id);
+            } catch (e) {
+                alert('❌ Lưu thất bại: ' + e.message);
+            } finally {
+                btnEl.disabled = false;
+                btnEl.textContent = '💾 Lưu lên Firebase';
+            }
+        }
+
+        function showBadge(id) {
             const badge = document.getElementById(`badge-${id}`);
             badge.style.display = 'inline-block';
-            setTimeout(() => { badge.style.display = 'none'; }, 2000);
-        }
-
-        function saveAllData() {
-            students.forEach((s, idx) => {
-                const nameEl = document.getElementById(`name-${s.id}`);
-                const msgEl = document.getElementById(`msg-${s.id}`);
-                if (nameEl) students[idx].name = nameEl.value.trim();
-                if (msgEl) students[idx].message = msgEl.value.trim();
-            });
-            saveStudentData();
-            alert('✅ Đã lưu tất cả thông tin thành công!');
+            setTimeout(() => { badge.style.display = 'none'; }, 2500);
         }
     </script>
 </body>

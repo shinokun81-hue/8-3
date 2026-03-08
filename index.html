@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chúc Mừng 8/3 – ITA22</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;700;800&family=Dancing+Script:wght@700&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <!-- Floating petals background -->
   <div class="petals-container" id="petals"></div>
@@ -21,14 +25,7 @@
 
       <div class="input-group">
         <label for="student-num">Số thứ tự (1 – 34)</label>
-        <input
-          type="number"
-          id="student-num"
-          min="1"
-          max="34"
-          placeholder="Ví dụ: 01, 02, 15..."
-          autocomplete="off"
-        />
+        <input type="number" id="student-num" min="1" max="34" placeholder="Ví dụ: 01, 02, 15..." autocomplete="off" />
         <span class="input-hint">Nhập số thứ tự trong danh sách lớp ITA22</span>
       </div>
 
@@ -38,7 +35,10 @@
 
       <div class="error-msg" id="error-msg" style="display:none;"></div>
 
-      <a href="admin.html" class="admin-link">🔐 Admin</a>
+      <div style="margin-top:20px; display:flex; gap:16px; justify-content:center;">
+        <a href="room.html" class="admin-link">🌌 Không Gian 3D</a>
+        <a href="admin.html" class="admin-link">🔐 Admin</a>
+      </div>
     </div>
   </div>
 
@@ -55,7 +55,7 @@
         <!-- Photo -->
         <div class="photo-wrap">
           <div class="photo-ring">
-            <img id="card-photo" src="" alt="Ảnh học sinh" onerror="this.src='photos/default.jpg'" />
+            <img id="card-photo" src="photos/default.jpg" alt="Ảnh học sinh" />
           </div>
           <div class="photo-badge">💐</div>
         </div>
@@ -83,7 +83,15 @@
     </div>
   </div>
 
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+  <!-- App scripts -->
+  <script src="firebase-config.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>
