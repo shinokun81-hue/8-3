@@ -346,31 +346,50 @@ function init() {
 
             fanPositions.forEach((pos, idx) => {
                 const fanClone = gltf.scene.clone();
-                // Reset hoàn toàn ma trận vật thể để không bị dính toạ độ cũ từ Blender/Sketchfab
+                // 1. Reset triệt để ma trận toạ độ
                 fanClone.matrix.identity();
                 fanClone.matrixWorld.identity();
                 fanClone.quaternion.set(0, 0, 0, 1);
 
+                // 2. Tìm bộ phân Cánh (widest part) để căn chiều cao cho chuẩn
                 const box = new THREE.Box3().setFromObject(fanClone);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
 
-                // Scale chuẩn (Sải cánh 6.5m - Độ to vừa vặn, không bị dính cục)
-                const scale = 6.5 / Math.max(size.x, size.z, 0.001);
+                // Tìm Mesh rộng nhất (là cánh) để lấy toạ độ Y của nó
+                let widestPart = null;
+                let maxS = 0;
+                fanClone.traverse(c => {
+                    if (c.isMesh) {
+                        const cb = new THREE.Box3().setFromObject(c);
+                        const cs = cb.getSize(new THREE.Vector3());
+                        const s = Math.max(cs.x, cs.z);
+                        if (s > maxS) { maxS = s; widestPart = c; }
+                    }
+                });
+
+                // Tỷ lệ Zoom (Sải cánh 4.0 mét - Mức độ đẹp nhất)
+                const scale = 4.0 / Math.max(size.x, size.z, 0.001);
                 fanClone.scale.set(scale, scale, scale);
 
-                // Căn chỉnh tâm: Đẩy đỉnh cao nhất của quạt sát lên mốc y=0
-                fanClone.position.set(-center.x * scale, -box.max.y * scale, -center.z * scale);
+                // 3. FIX CHIỀU CAO: 
+                // Thay vì lấy đỉnh mẫu, ta lấy đúng tâm bộ cánh quạt làm chuẩn 0
+                // để khi treo lên 3.6m, cái cánh sẽ chính xác ở 3.6m.
+                let bladeYOffset = 0;
+                if (widestPart) {
+                    const wBox = new THREE.Box3().setFromObject(widestPart);
+                    const wCenter = wBox.getCenter(new THREE.Vector3());
+                    bladeYOffset = wCenter.y; // Toạ độ Y của bộ cánh sau khi đã scale
+                } else {
+                    bladeYOffset = center.y;
+                }
 
-                // Môtơ xoay độc lập (Rotator)
+                fanClone.position.set(-center.x * scale, -bladeYOffset, -center.z * scale);
+
+                // 4. Môtơ xoay cực mượt
                 const rotator = new THREE.Group();
                 rotator.add(fanClone);
-
-                // Đặt vị trí Tuyệt đối trong Thế giới (Nâng lên 5 mét - Hoàn toàn không bị thấp nữa)
-                rotator.position.set(pos.x, 5.0, pos.z);
-
-                // Gán tên duy nhất để tránh bị dính cụm
-                rotator.name = "CeilingFan_" + idx;
+                rotator.position.set(pos.x, 3.6, pos.z); // Treo cách sàn 3.6 mét (Hết thấp!)
 
                 scene.add(rotator);
                 ceilingFans.push(rotator);
