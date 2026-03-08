@@ -337,54 +337,54 @@ function init() {
     for (let x of [-5.5, 5.5]) {
         for (let z of [-5, 4]) {
             if (gltfLoader) {
-                // Tải model nếu có
                 gltfLoader.load(
                     'models/ceiling_fan.glb',
                     function (gltf) {
                         const fan = gltf.scene;
 
-                        // -- TỰ ĐỘNG CHUẨN HOÁ SCALER & TÂM (Origin) CỦA MODEL BẤT KỲ --
+                        // 1. Lấy thông số Bounding Box lúc ban đầu
                         const box = new THREE.Box3().setFromObject(fan);
                         const size = box.getSize(new THREE.Vector3());
                         const centerBox = box.getCenter(new THREE.Vector3());
 
-                        // Dịch model sao cho TÂM của nó nằm ngay trục 0,0,0 của vỏ wrapper
-                        fan.position.set(-centerBox.x, -centerBox.y, -centerBox.z);
+                        // 2. Tính Tỷ lệ phóng to/thu nhỏ sao cho sải cánh quạt dài chuẩn 3.0 mét
+                        const maxDim = Math.max(size.x, size.z, 0.001);
+                        const scaleFactor = 3.0 / maxDim;
 
-                        // Tính tỷ lệ Scale để quạt to ra
-                        const maxDim = Math.max(size.x, size.z);
-                        const scaleFactor = (maxDim > 0) ? (14.0 / maxDim) : 1;
+                        // 3. Phóng to mô hình
                         fan.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-                        // Gắn vào một Group (vỏ wrapper) để Treo lên trần
-                        const wrapper = new THREE.Group();
-                        wrapper.position.set(x, 3.5, z); // Trần cao 4m, Treo xuống 3.5m
-                        wrapper.add(fan);
+                        // 4. Dịch chuyển ĐẢO NGƯỢC Trọng tâm VỀ SỐ KHÔNG (origin).
+                        // Vì Box3 tính toạ độ ban đầu, để đẩy nó thụt lùi lại ta phải nhân bù trừ với độ scale mới.
+                        fan.position.set(-centerBox.x * scaleFactor, -centerBox.y * scaleFactor, -centerBox.z * scaleFactor);
 
+                        // 5. Cắm Quạt vào một Lõi quay trung tâm (Rotator)
+                        const rotator = new THREE.Group();
+                        rotator.add(fan); // Lõi sẽ xoay tròn tại vị trí (0,0,0) và kéo cái quạt theo
+
+                        // 6. Treo nguyên bộ lên trần
+                        const wrapper = new THREE.Group();
+                        wrapper.position.set(x, 3.8, z); // Độ cao trần nhà
+                        wrapper.add(rotator);
                         scene.add(wrapper);
 
-                        // Tìm phần trục cánh quạt để xoay độc lập (Thường model thiết kế tách rời phần "Rotor", "Blade")
+                        // 7. Quét TÊN của từng bộ phận để chỉ xoay nhánh mang tên Cánh quạt
                         let isPartsSeparated = false;
                         fan.traverse((child) => {
                             const name = child.name.toLowerCase();
-                            // Nếu tìm thấy một nhóm con nào có tên bao hàm 'blade', 'rotor', 'spin' -> Chỉ xoay nhóm đó
-                            if (child.isGroup || child.isMesh) {
-                                if (name.includes('blade') || name.includes('rotor') || name.includes('spin') || name.includes('wing')) {
-                                    ceilingFans.push(child);
-                                    isPartsSeparated = true;
-                                }
+                            if ((child.isGroup || child.isMesh) && (name.includes('blade') || name.includes('rotor') || name.includes('spin') || name.includes('wing'))) {
+                                ceilingFans.push(child);
+                                isPartsSeparated = true;
                             }
                         });
 
-                        // Nếu Model tải về làm gộp cứng chung 1 khối (Base + Cánh dính chặt không thể tách rời)
-                        // Buộc phải xoay nguyên cả cái quạt.
+                        // Nếu fan được tạc nguyên khối rắn chắc -> Ép quay toàn bộ cổ quạt qua Rô-tơ
                         if (!isPartsSeparated) {
-                            ceilingFans.push(fan);
+                            ceilingFans.push(rotator);
                         }
                     },
                     undefined,
                     function (error) {
-                        // Nếu file không tồn tại trong thư mục models/ceiling_fan.glb, dùng quạt vẽ tay
                         buildFallbackFan(x, z);
                     }
                 );
