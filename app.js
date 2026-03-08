@@ -401,34 +401,53 @@ function init() {
         [[-5, -8], [5, -8], [-5, 8], [5, 8]].forEach(p => buildFallbackFan(p[0], p[1]));
     }
 
-    // Quạt treo tường (Wall fans)
-    const wallFanMat = new THREE.MeshStandardMaterial({ color: 0x444444 }); // Lồng sắt
-    const wallBladeMat = new THREE.MeshStandardMaterial({ color: 0xff7f2a }); // Cánh cam đặc trưng
-    for (let z of [-4, 2, 8]) {
-        const wFanGroup = new THREE.Group();
-        const base = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 0.2), wallFanMat);
-        wFanGroup.add(base);
+    // 3 Quạt treo tường (Wall fans) - Thay bằng Model thực tế
+    if (gltfLoader) {
+        gltfLoader.load('models/electric_wall_fan.glb', function (gltf) {
+            const masterWallFan = gltf.scene;
+            masterWallFan.traverse(c => { if (c.isCamera || c.isLight) c.parent.remove(c); });
 
-        const head = new THREE.Group();
-        head.position.set(0.15, 0, 0); head.rotation.z = -0.3; // Chúc xuống
+            const wallZPositions = [-4, 2, 8];
+            wallZPositions.forEach((z, idx) => {
+                const wFan = masterWallFan.clone();
+                const box = new THREE.Box3().setFromObject(wFan);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
 
-        const rotBlade = new THREE.Group();
-        for (let b = 0; b < 5; b++) { // 5 cánh
-            const bl = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.8, 0.15), wallBladeMat);
-            bl.position.set(0, 0.4, 0);
-            const pv = new THREE.Group(); pv.rotation.x = (Math.PI * 2 / 5) * b;
-            pv.add(bl); rotBlade.add(pv);
-        }
-        head.add(rotBlade);
+                // Scale sải cánh quạt treo tường khoảng 1.2 mét
+                const scale = 1.2 / Math.max(size.y, size.z, 0.001);
+                wFan.scale.set(scale, scale, scale);
+                wFan.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
-        const grill = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x888888, wireframe: true }));
-        grill.rotation.y = Math.PI / 2;
-        head.add(grill);
+                // Group xoay cổ (Head)
+                const headGroup = new THREE.Group();
+                headGroup.add(wFan);
 
-        wFanGroup.add(head);
-        wFanGroup.position.set(-7.8, 2.5, z);
-        scene.add(wFanGroup);
-        wallFans.push({ rotObj: rotBlade, group: head });
+                const wrapper = new THREE.Group();
+                wrapper.position.set(-7.8, 2.5, z);
+                wrapper.rotation.y = Math.PI / 2; // Hướng vào trong lớp
+                wrapper.add(headGroup);
+                scene.add(wrapper);
+
+                // Tìm cánh quạt (Bên trong model wall fan)
+                let blades = null;
+                let maxSpan = 0;
+                wFan.traverse(c => {
+                    if (c.isMesh) {
+                        const cb = new THREE.Box3().setFromObject(c);
+                        const cs = cb.getSize(new THREE.Vector3());
+                        const s = Math.max(cs.x, cs.y, cs.z);
+                        if (s > maxSpan) { maxSpan = s; blades = c; }
+                    }
+                });
+
+                // Nếu không tìm thấy mesh riêng, lấy cả model xoay (nhưng thường fan sẽ có phần xoay riêng)
+                wallFans.push({
+                    rotObj: blades || wFan,
+                    group: headGroup
+                });
+            });
+        });
     }
 
     // ================= TẠO BÀN HỌC & THIỆP =================
