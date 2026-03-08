@@ -260,18 +260,18 @@ function init() {
     interactables.push(boardPanel);
     scene.add(boardGroup);
 
-    // Cờ đỏ / Banner trên bảng - HAI DÒNG TRANG TRỌNG (Font siêu nhỏ)
-    const bannerCanvas = document.createElement('canvas'); bannerCanvas.width = 2048; bannerCanvas.height = 300;
+    // Cờ đỏ / Banner trên bảng - KHUNG NHỎ GỌN (6.2m x 0.5m)
+    const bannerCanvas = document.createElement('canvas'); bannerCanvas.width = 2048; bannerCanvas.height = 256;
     const bCtx = bannerCanvas.getContext('2d');
-    bCtx.fillStyle = "#c9184a"; bCtx.fillRect(0, 0, 2048, 300);
+    bCtx.fillStyle = "#c9184a"; bCtx.fillRect(0, 0, 2048, 256);
     bCtx.fillStyle = "#ffd700"; bCtx.font = "bold 50px sans-serif"; bCtx.textAlign = "center";
 
-    // Vẽ 2 dòng
-    bCtx.fillText("SỐNG, CHIẾN ĐẤU, LAO ĐỘNG VÀ HỌC TẬP", 1024, 125);
-    bCtx.fillText("THEO GƯƠNG BÁC HỒ VĨ ĐẠI", 1024, 195);
+    // Vẽ 2 dòng sát nhau trong khung hẹp
+    bCtx.fillText("SỐNG, CHIẾN ĐẤU, LAO ĐỘNG VÀ HỌC TẬP", 1024, 100);
+    bCtx.fillText("THEO GƯƠNG BÁC HỒ VĨ ĐẠI", 1024, 180);
 
     const bannerMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bannerCanvas) });
-    const banner = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.2), bannerMat);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 0.5), bannerMat);
     banner.position.set(0, 3.4, -10.9);
     scene.add(banner);
 
